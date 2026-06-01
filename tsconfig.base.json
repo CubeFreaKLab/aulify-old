@@ -13,15 +13,27 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
-      "@aulify/ui": ["packages/ui/src"],
-      "@aulify/design-system": ["packages/design-system/src"],
-      "@aulify/shared-types": ["packages/shared-types/src"],
-      "@aulify/validation": ["packages/validation/src"],
-      "@aulify/firebase-admin": ["packages/firebase-admin/src"],
-      "@aulify/api-client": ["packages/api-client/src"],
-      "@aulify/config": ["packages/config/src"]
+      "@aulify/ui": ["./packages/ui/src/index.ts"],
+      "@aulify/ui/*": ["./packages/ui/src/*"],
+
+      "@aulify/design-system": ["./packages/design-system/src/index.ts"],
+      "@aulify/design-system/*": ["./packages/design-system/src/*"],
+
+      "@aulify/shared-types": ["./packages/shared-types/src/index.ts"],
+      "@aulify/shared-types/*": ["./packages/shared-types/src/*"],
+
+      "@aulify/validation": ["./packages/validation/src/index.ts"],
+      "@aulify/validation/*": ["./packages/validation/src/*"],
+
+      "@aulify/firebase-admin": ["./packages/firebase-admin/src/index.ts"],
+      "@aulify/firebase-admin/*": ["./packages/firebase-admin/src/*"],
+
+      "@aulify/api-client": ["./packages/api-client/src/index.ts"],
+      "@aulify/api-client/*": ["./packages/api-client/src/*"],
+
+      "@aulify/config": ["./packages/config/src/index.ts"],
+      "@aulify/config/*": ["./packages/config/src/*"]
     }
   }
 }
