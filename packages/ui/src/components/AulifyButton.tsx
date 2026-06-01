@@ -28,7 +28,7 @@ export const AulifyButton = forwardRef<HTMLButtonElement, AulifyButtonProps>(
       ref={ref}
       type={type}
       className={classNames(
-        "inline-flex items-center justify-center rounded-lg border font-medium transition-colors duration-180 disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex items-center justify-center rounded-lg border font-medium transition-colors duration-base disabled:cursor-not-allowed disabled:opacity-60",
         sizeClasses[size],
         variantClasses[variant],
         className

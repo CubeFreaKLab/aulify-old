@@ -24,7 +24,7 @@ export const AulifyInput = forwardRef<HTMLInputElement, AulifyInputProps>(
           aria-describedby={describedBy || undefined}
           aria-invalid={Boolean(error) || undefined}
           className={classNames(
-            "min-h-10 rounded-lg border border-[#ECECE7] bg-[#FFFFFF] px-3 text-sm text-[#0F0F0F] outline-none transition-colors duration-180 placeholder:text-[#60615A] focus:border-[#049A4E] disabled:cursor-not-allowed disabled:bg-[#FAFAF8] disabled:text-[#60615A]",
+            "min-h-10 rounded-lg border border-[#ECECE7] bg-[#FFFFFF] px-3 text-sm text-[#0F0F0F] outline-none transition-colors duration-base placeholder:text-[#60615A] focus:border-[#049A4E] disabled:cursor-not-allowed disabled:bg-[#FAFAF8] disabled:text-[#60615A]",
             error ? "border-[#0F0F0F]" : undefined,
             className
           )}

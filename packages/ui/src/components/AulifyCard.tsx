@@ -9,7 +9,7 @@ export type AulifyCardProps = HTMLAttributes<HTMLDivElement> & {
 
 const variantClasses: Record<AulifyCardVariant, string> = {
   default: "border-[#ECECE7] bg-[#FFFFFF]",
-  interactive: "border-[#ECECE7] bg-[#FFFFFF] transition-shadow duration-180 hover:shadow-card"
+  interactive: "border-[#ECECE7] bg-[#FFFFFF] transition-shadow duration-base hover:shadow-card"
 };
 
 export const AulifyCard = forwardRef<HTMLDivElement, AulifyCardProps>(
