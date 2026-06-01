@@ -1,0 +1,42 @@
+:root {
+  color: #0F0F0F;
+  background: #FAFAF8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  background: #FAFAF8;
+}
+
+.placeholder {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.placeholder section {
+  max-width: 640px;
+}
+
+.placeholder p {
+  margin: 0 0 12px;
+  color: #049A4E;
+  font-weight: 700;
+}
+
+.placeholder h1 {
+  margin: 0;
+  color: #0F0F0F;
+  font-size: 32px;
+  line-height: 1.15;
+}

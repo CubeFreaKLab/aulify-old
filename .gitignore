@@ -2,6 +2,7 @@ node_modules
 .next
 dist
 build
+*.tsbuildinfo
 
 .env
 .env.*
@@ -9,5 +10,4 @@ build
 
 internal/
 .agent/
-prompts/private/
 *.local.md
