@@ -6,12 +6,12 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
   title: "Aulify",
-  description: "Public landing page for Aulify"
+  description: "Aulify ayuda a profesores y estudiantes a organizar clases, notas, tareas y actividades."
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="es">
       <body className={`${inter.variable} font-sans`}>{children}</body>
     </html>
   );
