@@ -1,3 +1,5 @@
+import { appLinks } from "../../lib/appLinks";
+
 export function HeroSection() {
   return (
     <section id="inicio" className="px-5 pb-12 pt-12 sm:px-8 sm:pb-16 sm:pt-16 lg:px-10 lg:pb-20 lg:pt-14 xl:px-12">
@@ -17,7 +19,7 @@ export function HeroSection() {
           <div className="mt-10 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
             <a
               className="inline-flex min-h-[60px] w-full items-center justify-center rounded-[16px] border border-brand-green bg-brand-green px-8 text-base font-semibold text-neutral-white shadow-card transition-colors duration-base hover:bg-neutral-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green sm:w-auto"
-              href="https://app.aulify.org/auth/register"
+              href={appLinks.register}
             >
               Crear cuenta
             </a>
