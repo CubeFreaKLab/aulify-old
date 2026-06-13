@@ -8,7 +8,7 @@ import { AuthInput } from "../../../components/auth/AuthInput";
 import { AuthRoleSelector, type AuthRole } from "../../../components/auth/AuthRoleSelector";
 import { AuthSplitLayout } from "../../../components/auth/AuthSplitLayout";
 import { SocialLoginButton } from "../../../components/auth/SocialLoginButton";
-import { getDashboardPathForSession, getMockSession, setMockSession } from "../../../lib/mockAuth";
+import { getCurrentSession, getDashboardPathForSession, setCurrentSession } from "../../../lib/repositories/authRepository";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -38,7 +38,7 @@ export default function RegisterPage() {
   });
 
   useEffect(() => {
-    const session = getMockSession();
+    const session = getCurrentSession();
 
     if (session) {
       router.replace(getDashboardPathForSession(session));
@@ -149,7 +149,7 @@ export default function RegisterPage() {
       return;
     }
 
-    const session = setMockSession({
+    const session = setCurrentSession({
       email,
       name: fullName,
       role

@@ -2,14 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { CourseCard } from "./CourseCard";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
-import { teacherCourses, type Course } from "../../lib/mock/courses";
+import { getCourses, getInitialCourses, type Course } from "../../lib/repositories/courseRepository";
 
 export function TeacherCoursesList() {
-  const [courses, setCourses] = useState<Course[]>(teacherCourses);
+  const [courses, setCourses] = useState<Course[]>(getInitialCourses("teacher"));
 
   useEffect(() => {
-    setCourses([...readStoredTeacherCourses(), ...teacherCourses]);
+    setCourses(getCourses("teacher"));
   }, []);
 
   return (

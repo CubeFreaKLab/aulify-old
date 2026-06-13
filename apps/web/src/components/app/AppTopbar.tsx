@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { AppNavItem } from "./appNavigation";
-import { getRoleLabel, type MockSession } from "../../lib/mockAuth";
+import { getRoleLabel, type MockSession } from "../../lib/repositories/authRepository";
 
 type AppTopbarProps = {
   activeHref: string;

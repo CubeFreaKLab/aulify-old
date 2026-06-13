@@ -5,34 +5,25 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { DashboardCard } from "../app/DashboardCard";
 import { CoursePreviewList } from "./CoursePreviewList";
-import { readStoredActivityAttempts, readStoredTeacherActivities } from "../../lib/activityStorage";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
 import {
   activityTypeLabels,
-  getCourseActivities,
-  getPublishedActivities,
   getStudentActivityState,
-  mockActivities,
-  mockActivityAttempts,
   studentActivityStateLabels,
   type Activity,
   type ActivityAttempt
 } from "../../lib/mock/activities";
-import { findCourseById, studentCourses, type Course } from "../../lib/mock/courses";
-import { getCourseNotes, getPublishedNotes, mockNotes, type Note } from "../../lib/mock/notes";
+import { getActivityAttempts, getActivitiesByCourseId, getInitialActivitiesByCourseId, getInitialActivityAttempts } from "../../lib/repositories/activityRepository";
+import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import type { Note } from "../../lib/mock/notes";
 import {
   formatTaskDate,
-  getCourseTasks,
-  getPublishedTasks,
   getStudentTaskState,
-  mockTaskSubmissions,
-  mockTasks,
   studentTaskStateLabels,
   type Task,
   type TaskSubmission
 } from "../../lib/mock/tasks";
-import { readStoredTeacherNotes } from "../../lib/noteStorage";
-import { readStoredTaskSubmissions, readStoredTeacherTasks } from "../../lib/taskStorage";
+import { getInitialNotesByCourseId, getNotesByCourseId } from "../../lib/repositories/noteRepository";
+import { getInitialTaskSubmissions, getInitialTasksByCourseId, getTaskSubmissions, getTasksByCourseId } from "../../lib/repositories/taskRepository";
 
 type StudentCourseDetailProps = {
   courseId: string;
@@ -71,26 +62,21 @@ function createActivityPreviewItems(courseId: string, activities: Activity[], at
 }
 
 export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => findCourseById(courseId, studentCourses));
-  const [notes, setNotes] = useState<Note[]>(() => getCourseNotes(courseId, getPublishedNotes(mockNotes)));
-  const [tasks, setTasks] = useState<Task[]>(() => getCourseTasks(courseId, getPublishedTasks(mockTasks)));
-  const [submissions, setSubmissions] = useState<TaskSubmission[]>(mockTaskSubmissions);
-  const [activities, setActivities] = useState<Activity[]>(() => getCourseActivities(courseId, getPublishedActivities(mockActivities)));
-  const [activityAttempts, setActivityAttempts] = useState<ActivityAttempt[]>(mockActivityAttempts);
+  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "student"));
+  const [notes, setNotes] = useState<Note[]>(() => getInitialNotesByCourseId(courseId, { publishedOnly: true }));
+  const [tasks, setTasks] = useState<Task[]>(() => getInitialTasksByCourseId(courseId, { publishedOnly: true }));
+  const [submissions, setSubmissions] = useState<TaskSubmission[]>(getInitialTaskSubmissions);
+  const [activities, setActivities] = useState<Activity[]>(() => getInitialActivitiesByCourseId(courseId, { publishedOnly: true }));
+  const [activityAttempts, setActivityAttempts] = useState<ActivityAttempt[]>(getInitialActivityAttempts);
   const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
 
   useEffect(() => {
-    const courses = [...readStoredTeacherCourses(), ...studentCourses];
-    const publishedNotes = getPublishedNotes([...readStoredTeacherNotes(), ...mockNotes]);
-    const publishedTasks = getPublishedTasks([...readStoredTeacherTasks(), ...mockTasks]);
-    const publishedActivities = getPublishedActivities([...readStoredTeacherActivities(), ...mockActivities]);
-
-    setCourse(findCourseById(courseId, courses));
-    setNotes(getCourseNotes(courseId, publishedNotes));
-    setTasks(getCourseTasks(courseId, publishedTasks));
-    setSubmissions([...readStoredTaskSubmissions(), ...mockTaskSubmissions]);
-    setActivities(getCourseActivities(courseId, publishedActivities));
-    setActivityAttempts([...readStoredActivityAttempts(), ...mockActivityAttempts]);
+    setCourse(getCourseById(courseId, "student"));
+    setNotes(getNotesByCourseId(courseId, { publishedOnly: true }));
+    setTasks(getTasksByCourseId(courseId, { publishedOnly: true }));
+    setSubmissions(getTaskSubmissions());
+    setActivities(getActivitiesByCourseId(courseId, { publishedOnly: true }));
+    setActivityAttempts(getActivityAttempts());
     setHasLoadedStoredData(true);
   }, [courseId]);
 

@@ -4,10 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { NoteDetail } from "./NoteDetail";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
-import { findCourseById, teacherCourses, type Course } from "../../lib/mock/courses";
-import { findNoteById, mockNotes, type Note } from "../../lib/mock/notes";
-import { readStoredTeacherNotes } from "../../lib/noteStorage";
+import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { getInitialNoteById, getNoteById, type Note } from "../../lib/repositories/noteRepository";
 
 type TeacherNoteDetailProps = {
   courseId: string;
@@ -15,16 +13,13 @@ type TeacherNoteDetailProps = {
 };
 
 export function TeacherNoteDetail({ courseId, noteId }: TeacherNoteDetailProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => findCourseById(courseId));
-  const [note, setNote] = useState<Note | undefined>(() => findNoteById(courseId, noteId));
+  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "teacher"));
+  const [note, setNote] = useState<Note | undefined>(() => getInitialNoteById(courseId, noteId));
   const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
 
   useEffect(() => {
-    const courses = [...readStoredTeacherCourses(), ...teacherCourses];
-    const notes = [...readStoredTeacherNotes(), ...mockNotes];
-
-    setCourse(findCourseById(courseId, courses));
-    setNote(findNoteById(courseId, noteId, notes));
+    setCourse(getCourseById(courseId, "teacher"));
+    setNote(getNoteById(courseId, noteId));
     setHasLoadedStoredData(true);
   }, [courseId, noteId]);
 

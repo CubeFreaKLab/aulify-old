@@ -1,20 +1,18 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
-import { mockNotes, type Note } from "../../lib/mock/notes";
-import { teacherCourses, type Course } from "../../lib/mock/courses";
-import { readStoredTeacherNotes } from "../../lib/noteStorage";
+import { getCourses, getInitialCourses, type Course } from "../../lib/repositories/courseRepository";
+import { getInitialNotes, getNotes, type Note } from "../../lib/repositories/noteRepository";
 import { NotesList } from "./NotesList";
 
 export function TeacherNotesOverview() {
-  const [notes, setNotes] = useState<Note[]>(mockNotes);
-  const [courses, setCourses] = useState<Course[]>(teacherCourses);
+  const [notes, setNotes] = useState<Note[]>(getInitialNotes());
+  const [courses, setCourses] = useState<Course[]>(getInitialCourses("teacher"));
   const [selectedCourseId, setSelectedCourseId] = useState("all");
 
   useEffect(() => {
-    setNotes([...readStoredTeacherNotes(), ...mockNotes]);
-    setCourses([...readStoredTeacherCourses(), ...teacherCourses]);
+    setNotes(getNotes());
+    setCourses(getCourses("teacher"));
   }, []);
 
   const courseNames = useMemo(() => new Map(courses.map((course) => [course.id, course.name])), [courses]);

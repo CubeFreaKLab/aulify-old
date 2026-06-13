@@ -3,10 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
-import { getCourseNotes, mockNotes, type Note } from "../../lib/mock/notes";
 import type { TaskStatus } from "../../lib/mock/tasks";
-import { readStoredTeacherNotes } from "../../lib/noteStorage";
-import { createStoredTeacherTask } from "../../lib/taskStorage";
+import { getInitialNotesByCourseId, getNotesByCourseId, type Note } from "../../lib/repositories/noteRepository";
+import { createTask } from "../../lib/repositories/taskRepository";
 
 type TaskFormProps = {
   courseId: string;
@@ -33,11 +32,11 @@ export function TaskForm({ courseId }: TaskFormProps) {
   const [points, setPoints] = useState("100");
   const [status, setStatus] = useState<Exclude<TaskStatus, "closed">>("draft");
   const [relatedNoteId, setRelatedNoteId] = useState("");
-  const [courseNotes, setCourseNotes] = useState<Note[]>(() => getCourseNotes(courseId, mockNotes));
+  const [courseNotes, setCourseNotes] = useState<Note[]>(() => getInitialNotesByCourseId(courseId));
   const [errors, setErrors] = useState<TaskFormErrors>({ description: "", dueDate: "", instructions: "", title: "" });
 
   useEffect(() => {
-    setCourseNotes(getCourseNotes(courseId, [...readStoredTeacherNotes(), ...mockNotes]));
+    setCourseNotes(getNotesByCourseId(courseId));
   }, [courseId]);
 
   function validateForm() {
@@ -59,7 +58,7 @@ export function TaskForm({ courseId }: TaskFormProps) {
       return;
     }
 
-    const task = createStoredTeacherTask({
+    const task = createTask({
       courseId,
       description,
       dueDate,

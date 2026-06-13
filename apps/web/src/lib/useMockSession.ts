@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getMockSession, type MockSession } from "./mockAuth";
+import { getCurrentSession, type MockSession } from "./repositories/authRepository";
 
 export function useMockSession() {
   const [session, setSession] = useState<MockSession | null>(null);
   const [hasLoadedSession, setHasLoadedSession] = useState(false);
 
   useEffect(() => {
-    setSession(getMockSession());
+    setSession(getCurrentSession());
     setHasLoadedSession(true);
   }, []);
 

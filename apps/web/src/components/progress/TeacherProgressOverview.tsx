@@ -1,33 +1,16 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { readStoredActivityAttempts, readStoredTeacherActivities } from "../../lib/activityStorage";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
-import { mockActivities, mockActivityAttempts } from "../../lib/mock/activities";
-import { teacherCourses } from "../../lib/mock/courses";
-import { mockNotes } from "../../lib/mock/notes";
-import { mockTaskSubmissions, mockTasks } from "../../lib/mock/tasks";
-import { readStoredTeacherNotes } from "../../lib/noteStorage";
 import {
-  getTeacherCourseProgress,
-  getTeacherProgressSummary,
-  getTeacherRecentProgress,
+  getInitialTeacherProgressDataset,
+  getTeacherProgress,
+  getTeacherProgressDataset,
   type ProgressDataset
-} from "../../lib/progress";
-import { readStoredTaskSubmissions, readStoredTeacherTasks } from "../../lib/taskStorage";
+} from "../../lib/repositories/progressRepository";
 import { CourseProgressCard } from "./CourseProgressCard";
 import { ProgressBar } from "./ProgressBar";
 import { ProgressSummaryCard } from "./ProgressSummaryCard";
 import { RecentProgressItem } from "./RecentProgressItem";
-
-const initialTeacherDataset: ProgressDataset = {
-  activities: mockActivities,
-  activityAttempts: mockActivityAttempts,
-  courses: teacherCourses,
-  notes: mockNotes,
-  taskSubmissions: mockTaskSubmissions,
-  tasks: mockTasks
-};
 
 type IndicatorCardProps = {
   helper: string;
@@ -53,22 +36,13 @@ function IndicatorCard({ helper, label, value }: IndicatorCardProps) {
 }
 
 export function TeacherProgressOverview() {
-  const [dataset, setDataset] = useState<ProgressDataset>(initialTeacherDataset);
+  const [dataset, setDataset] = useState<ProgressDataset>(getInitialTeacherProgressDataset);
 
   useEffect(() => {
-    setDataset({
-      activities: [...readStoredTeacherActivities(), ...mockActivities],
-      activityAttempts: [...readStoredActivityAttempts(), ...mockActivityAttempts],
-      courses: [...readStoredTeacherCourses(), ...teacherCourses],
-      notes: [...readStoredTeacherNotes(), ...mockNotes],
-      taskSubmissions: [...readStoredTaskSubmissions(), ...mockTaskSubmissions],
-      tasks: [...readStoredTeacherTasks(), ...mockTasks]
-    });
+    setDataset(getTeacherProgressDataset());
   }, []);
 
-  const summary = useMemo(() => getTeacherProgressSummary(dataset), [dataset]);
-  const courseProgress = useMemo(() => getTeacherCourseProgress(dataset), [dataset]);
-  const recentProgress = useMemo(() => getTeacherRecentProgress(dataset), [dataset]);
+  const { courseProgress, recentProgress, summary } = useMemo(() => getTeacherProgress(dataset), [dataset]);
 
   return (
     <div className="grid gap-8">

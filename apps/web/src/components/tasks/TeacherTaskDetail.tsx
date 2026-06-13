@@ -5,12 +5,16 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { TaskDetail } from "./TaskDetail";
 import { TaskSubmissionsList } from "./TaskSubmissionsList";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
-import { findCourseById, teacherCourses, type Course } from "../../lib/mock/courses";
-import { findNoteById, mockNotes, type Note } from "../../lib/mock/notes";
-import { findTaskById, mockTaskSubmissions, mockTasks, type Task, type TaskSubmission } from "../../lib/mock/tasks";
-import { readStoredTeacherNotes } from "../../lib/noteStorage";
-import { readStoredTaskSubmissions, readStoredTeacherTasks } from "../../lib/taskStorage";
+import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { getInitialNoteById, getNoteById, type Note } from "../../lib/repositories/noteRepository";
+import {
+  getInitialTaskById,
+  getInitialTaskSubmissions,
+  getTaskById,
+  getTaskSubmissions,
+  type Task,
+  type TaskSubmission
+} from "../../lib/repositories/taskRepository";
 
 type TeacherTaskDetailProps = {
   courseId: string;
@@ -18,28 +22,24 @@ type TeacherTaskDetailProps = {
 };
 
 export function TeacherTaskDetail({ courseId, taskId }: TeacherTaskDetailProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => findCourseById(courseId));
-  const [task, setTask] = useState<Task | undefined>(() => findTaskById(courseId, taskId));
+  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "teacher"));
+  const [task, setTask] = useState<Task | undefined>(() => getInitialTaskById(courseId, taskId));
   const [relatedNote, setRelatedNote] = useState<Note | undefined>(() => {
-    const initialTask = findTaskById(courseId, taskId);
-    return initialTask?.relatedNoteId ? findNoteById(courseId, initialTask.relatedNoteId) : undefined;
+    const initialTask = getInitialTaskById(courseId, taskId);
+    return initialTask?.relatedNoteId ? getInitialNoteById(courseId, initialTask.relatedNoteId) : undefined;
   });
   const [submissions, setSubmissions] = useState<TaskSubmission[]>(() =>
-    mockTaskSubmissions.filter((submission) => submission.taskId === taskId)
+    getInitialTaskSubmissions().filter((submission) => submission.taskId === taskId)
   );
   const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
 
   useEffect(() => {
-    const courses = [...readStoredTeacherCourses(), ...teacherCourses];
-    const tasks = [...readStoredTeacherTasks(), ...mockTasks];
-    const notes = [...readStoredTeacherNotes(), ...mockNotes];
-    const allSubmissions = [...readStoredTaskSubmissions(), ...mockTaskSubmissions];
-    const nextTask = findTaskById(courseId, taskId, tasks);
+    const nextTask = getTaskById(courseId, taskId);
 
-    setCourse(findCourseById(courseId, courses));
+    setCourse(getCourseById(courseId, "teacher"));
     setTask(nextTask);
-    setRelatedNote(nextTask?.relatedNoteId ? findNoteById(courseId, nextTask.relatedNoteId, notes) : undefined);
-    setSubmissions(allSubmissions.filter((submission) => submission.taskId === taskId));
+    setRelatedNote(nextTask?.relatedNoteId ? getNoteById(courseId, nextTask.relatedNoteId) : undefined);
+    setSubmissions(getTaskSubmissions().filter((submission) => submission.taskId === taskId));
     setHasLoadedStoredData(true);
   }, [courseId, taskId]);
 

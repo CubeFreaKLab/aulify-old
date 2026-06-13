@@ -8,7 +8,7 @@ import { AuthInput } from "../../../components/auth/AuthInput";
 import { AuthRoleSelector, type AuthRole } from "../../../components/auth/AuthRoleSelector";
 import { AuthSplitLayout } from "../../../components/auth/AuthSplitLayout";
 import { SocialLoginButton } from "../../../components/auth/SocialLoginButton";
-import { getDashboardPathForSession, getMockSession, setMockSession } from "../../../lib/mockAuth";
+import { getCurrentSession, getDashboardPathForSession, setCurrentSession } from "../../../lib/repositories/authRepository";
 
 function getLoginSessionName(role: AuthRole) {
   return role === "teacher" ? "Profesor Aulify" : "Estudiante Aulify";
@@ -25,7 +25,7 @@ export default function LoginPage() {
   const [shakeKeys, setShakeKeys] = useState({ email: 0, password: 0 });
 
   useEffect(() => {
-    const session = getMockSession();
+    const session = getCurrentSession();
 
     if (session) {
       router.replace(getDashboardPathForSession(session));
@@ -112,7 +112,7 @@ export default function LoginPage() {
       return;
     }
 
-    const session = setMockSession({
+    const session = setCurrentSession({
       email,
       name: getLoginSessionName(role),
       role

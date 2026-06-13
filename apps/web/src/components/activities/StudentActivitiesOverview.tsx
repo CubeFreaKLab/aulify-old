@@ -1,28 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
 import {
-  getPublishedActivities,
   getStudentActivityState,
-  mockActivities,
-  mockActivityAttempts,
   type Activity,
   type ActivityAttempt
 } from "../../lib/mock/activities";
-import { studentCourses, type Course } from "../../lib/mock/courses";
-import { readStoredActivityAttempts, readStoredTeacherActivities } from "../../lib/activityStorage";
+import {
+  getActivities,
+  getActivityAttempts,
+  getInitialActivities,
+  getInitialActivityAttempts
+} from "../../lib/repositories/activityRepository";
+import { getCourses, getInitialCourses, type Course } from "../../lib/repositories/courseRepository";
 import { ActivitiesList } from "./ActivitiesList";
 
 export function StudentActivitiesOverview() {
-  const [activities, setActivities] = useState<Activity[]>(getPublishedActivities(mockActivities));
-  const [attempts, setAttempts] = useState<ActivityAttempt[]>(mockActivityAttempts);
-  const [courses, setCourses] = useState<Course[]>(studentCourses);
+  const [activities, setActivities] = useState<Activity[]>(getInitialActivities({ publishedOnly: true }));
+  const [attempts, setAttempts] = useState<ActivityAttempt[]>(getInitialActivityAttempts());
+  const [courses, setCourses] = useState<Course[]>(getInitialCourses("student"));
 
   useEffect(() => {
-    setActivities(getPublishedActivities([...readStoredTeacherActivities(), ...mockActivities]));
-    setAttempts([...readStoredActivityAttempts(), ...mockActivityAttempts]);
-    setCourses([...readStoredTeacherCourses(), ...studentCourses]);
+    setActivities(getActivities({ publishedOnly: true }));
+    setAttempts(getActivityAttempts());
+    setCourses(getCourses("student"));
   }, []);
 
   const courseNames = useMemo(() => new Map(courses.map((course) => [course.id, course.name])), [courses]);

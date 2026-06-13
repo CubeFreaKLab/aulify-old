@@ -2,7 +2,7 @@
 
 import { type FormEvent, useEffect, useState } from "react";
 import { formatTaskDate, type TaskSubmission } from "../../lib/mock/tasks";
-import { createStoredTaskSubmission } from "../../lib/taskStorage";
+import { submitTask } from "../../lib/repositories/taskRepository";
 
 type TaskSubmissionFormProps = {
   existingSubmission?: TaskSubmission;
@@ -26,7 +26,7 @@ export function TaskSubmissionForm({ existingSubmission, taskId }: TaskSubmissio
       return;
     }
 
-    const nextSubmission = createStoredTaskSubmission({ content, taskId });
+    const nextSubmission = submitTask({ content, taskId });
     setSubmission(nextSubmission);
     setContent("");
     setError("");

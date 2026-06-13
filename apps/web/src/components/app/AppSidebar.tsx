@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { AppNavItem, AppRole } from "./appNavigation";
-import { getRoleLabel, type MockSession } from "../../lib/mockAuth";
+import { getRoleLabel, type MockSession } from "../../lib/repositories/authRepository";
 
 type AppSidebarProps = {
   activeHref: string;

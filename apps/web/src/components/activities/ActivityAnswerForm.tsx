@@ -8,7 +8,7 @@ import {
   type ActivityAnswer,
   type ActivityAttempt
 } from "../../lib/mock/activities";
-import { createStoredActivityAttempt } from "../../lib/activityStorage";
+import { submitActivityAttempt } from "../../lib/repositories/activityRepository";
 
 type ActivityAnswerFormProps = {
   activity: Activity;
@@ -106,7 +106,7 @@ export function ActivityAnswerForm({ activity, existingAttempt }: ActivityAnswer
       return;
     }
 
-    const nextAttempt = createStoredActivityAttempt({ activity, answers: buildAnswers() });
+    const nextAttempt = submitActivityAttempt({ activity, answers: buildAnswers() });
     setAttempt(nextAttempt);
     setAnswers({});
     setError("");

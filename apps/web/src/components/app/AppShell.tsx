@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AppSidebar } from "./AppSidebar";
 import { AppTopbar } from "./AppTopbar";
 import { type AppRole, getAppNavigation } from "./appNavigation";
-import { clearMockSession, getDashboardPathForSession, type MockSession } from "../../lib/mockAuth";
+import { clearCurrentSession, getDashboardPathForSession, type MockSession } from "../../lib/repositories/authRepository";
 import { useMockSession } from "../../lib/useMockSession";
 
 type AppShellProps = {
@@ -39,7 +39,7 @@ export function AppShell({ activeHref, children, primaryAction, role, subtitle, 
   }, [hasLoadedSession, role, router, session]);
 
   function handleLogout() {
-    clearMockSession();
+    clearCurrentSession();
     router.replace("/auth/login");
   }
 

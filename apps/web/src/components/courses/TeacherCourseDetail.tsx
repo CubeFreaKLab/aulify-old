@@ -5,43 +5,39 @@ import { useEffect, useState } from "react";
 import { CoursePreviewList } from "./CoursePreviewList";
 import { AppShell } from "../app/AppShell";
 import { DashboardCard } from "../app/DashboardCard";
-import { readStoredActivityAttempts, readStoredTeacherActivities } from "../../lib/activityStorage";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
 import {
   activityStatusLabels,
   activityTypeLabels,
-  getCourseActivities,
-  mockActivities,
-  mockActivityAttempts,
   type Activity,
   type ActivityAttempt
 } from "../../lib/mock/activities";
-import { findCourseById, teacherCourses, type Course } from "../../lib/mock/courses";
-import { getCourseNotes, mockNotes, noteStatusLabels, type Note } from "../../lib/mock/notes";
-import { formatTaskDate, getCourseTasks, mockTaskSubmissions, mockTasks, taskStatusLabels, type Task, type TaskSubmission } from "../../lib/mock/tasks";
-import { readStoredTeacherNotes } from "../../lib/noteStorage";
-import { readStoredTaskSubmissions, readStoredTeacherTasks } from "../../lib/taskStorage";
+import { getActivityAttempts, getActivitiesByCourseId, getInitialActivitiesByCourseId, getInitialActivityAttempts } from "../../lib/repositories/activityRepository";
+import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { noteStatusLabels, type Note } from "../../lib/mock/notes";
+import { formatTaskDate, taskStatusLabels, type Task, type TaskSubmission } from "../../lib/mock/tasks";
+import { getInitialNotesByCourseId, getNotesByCourseId } from "../../lib/repositories/noteRepository";
+import { getInitialTaskSubmissions, getInitialTasksByCourseId, getTaskSubmissions, getTasksByCourseId } from "../../lib/repositories/taskRepository";
 
 type TeacherCourseDetailProps = {
   courseId: string;
 };
 
 export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => findCourseById(courseId));
-  const [notes, setNotes] = useState<Note[]>(() => getCourseNotes(courseId, mockNotes));
-  const [tasks, setTasks] = useState<Task[]>(() => getCourseTasks(courseId, mockTasks));
-  const [submissions, setSubmissions] = useState<TaskSubmission[]>(mockTaskSubmissions);
-  const [activities, setActivities] = useState<Activity[]>(() => getCourseActivities(courseId, mockActivities));
-  const [activityAttempts, setActivityAttempts] = useState<ActivityAttempt[]>(mockActivityAttempts);
+  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "teacher"));
+  const [notes, setNotes] = useState<Note[]>(() => getInitialNotesByCourseId(courseId));
+  const [tasks, setTasks] = useState<Task[]>(() => getInitialTasksByCourseId(courseId));
+  const [submissions, setSubmissions] = useState<TaskSubmission[]>(getInitialTaskSubmissions);
+  const [activities, setActivities] = useState<Activity[]>(() => getInitialActivitiesByCourseId(courseId));
+  const [activityAttempts, setActivityAttempts] = useState<ActivityAttempt[]>(getInitialActivityAttempts);
   const [hasLoadedStoredCourses, setHasLoadedStoredCourses] = useState(false);
 
   useEffect(() => {
-    setCourse(findCourseById(courseId, [...readStoredTeacherCourses(), ...teacherCourses]));
-    setNotes(getCourseNotes(courseId, [...readStoredTeacherNotes(), ...mockNotes]));
-    setTasks(getCourseTasks(courseId, [...readStoredTeacherTasks(), ...mockTasks]));
-    setSubmissions([...readStoredTaskSubmissions(), ...mockTaskSubmissions]);
-    setActivities(getCourseActivities(courseId, [...readStoredTeacherActivities(), ...mockActivities]));
-    setActivityAttempts([...readStoredActivityAttempts(), ...mockActivityAttempts]);
+    setCourse(getCourseById(courseId, "teacher"));
+    setNotes(getNotesByCourseId(courseId));
+    setTasks(getTasksByCourseId(courseId));
+    setSubmissions(getTaskSubmissions());
+    setActivities(getActivitiesByCourseId(courseId));
+    setActivityAttempts(getActivityAttempts());
     setHasLoadedStoredCourses(true);
   }, [courseId]);
 

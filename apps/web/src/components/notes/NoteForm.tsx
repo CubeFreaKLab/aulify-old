@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { createStoredTeacherNote } from "../../lib/noteStorage";
 import type { NoteStatus } from "../../lib/mock/notes";
+import { createNote } from "../../lib/repositories/noteRepository";
 
 type NoteFormProps = {
   courseId: string;
@@ -47,7 +47,7 @@ export function NoteForm({ courseId }: NoteFormProps) {
       return;
     }
 
-    const note = createStoredTeacherNote({ content, courseId, status, summary, title });
+    const note = createNote({ content, courseId, status, summary, title });
     router.push(`/teacher/courses/${courseId}/notes/${note.id}`);
   }
 

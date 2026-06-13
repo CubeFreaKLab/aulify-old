@@ -4,18 +4,15 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { ActivityAnswerForm } from "./ActivityAnswerForm";
-import { readStoredActivityAttempts, readStoredTeacherActivities } from "../../lib/activityStorage";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
 import {
-  findActivityById,
-  getCurrentStudentActivityAttempt,
-  getPublishedActivities,
-  mockActivities,
-  mockActivityAttempts,
+  getActivityById,
+  getCurrentStudentAttempt,
+  getInitialActivityById,
+  getInitialCurrentStudentAttempt,
   type Activity,
   type ActivityAttempt
-} from "../../lib/mock/activities";
-import { findCourseById, studentCourses, type Course } from "../../lib/mock/courses";
+} from "../../lib/repositories/activityRepository";
+import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 
 type StudentActivityDetailProps = {
   activityId: string;
@@ -23,19 +20,15 @@ type StudentActivityDetailProps = {
 };
 
 export function StudentActivityDetail({ activityId, courseId }: StudentActivityDetailProps) {
-  const [activity, setActivity] = useState<Activity | undefined>(() => findActivityById(courseId, activityId, getPublishedActivities(mockActivities)));
-  const [attempt, setAttempt] = useState<ActivityAttempt | undefined>(() => getCurrentStudentActivityAttempt(activityId, mockActivityAttempts));
-  const [course, setCourse] = useState<Course | undefined>(() => findCourseById(courseId, studentCourses));
+  const [activity, setActivity] = useState<Activity | undefined>(() => getInitialActivityById(courseId, activityId, { publishedOnly: true }));
+  const [attempt, setAttempt] = useState<ActivityAttempt | undefined>(() => getInitialCurrentStudentAttempt(activityId));
+  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "student"));
   const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
 
   useEffect(() => {
-    const activities = getPublishedActivities([...readStoredTeacherActivities(), ...mockActivities]);
-    const attempts = [...readStoredActivityAttempts(), ...mockActivityAttempts];
-    const courses = [...readStoredTeacherCourses(), ...studentCourses];
-
-    setActivity(findActivityById(courseId, activityId, activities));
-    setAttempt(getCurrentStudentActivityAttempt(activityId, attempts));
-    setCourse(findCourseById(courseId, courses));
+    setActivity(getActivityById(courseId, activityId, { publishedOnly: true }));
+    setAttempt(getCurrentStudentAttempt(activityId));
+    setCourse(getCourseById(courseId, "student"));
     setHasLoadedStoredData(true);
   }, [activityId, courseId]);
 

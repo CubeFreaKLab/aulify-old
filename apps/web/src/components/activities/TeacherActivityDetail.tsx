@@ -5,16 +5,15 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { ActivityDetail } from "./ActivityDetail";
 import { ActivityResults } from "./ActivityResults";
-import { readStoredActivityAttempts, readStoredTeacherActivities } from "../../lib/activityStorage";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
 import {
-  findActivityById,
-  mockActivities,
-  mockActivityAttempts,
+  getActivityAttempts,
+  getActivityById,
+  getInitialActivityAttempts,
+  getInitialActivityById,
   type Activity,
   type ActivityAttempt
-} from "../../lib/mock/activities";
-import { findCourseById, teacherCourses, type Course } from "../../lib/mock/courses";
+} from "../../lib/repositories/activityRepository";
+import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 
 type TeacherActivityDetailProps = {
   activityId: string;
@@ -22,21 +21,17 @@ type TeacherActivityDetailProps = {
 };
 
 export function TeacherActivityDetail({ activityId, courseId }: TeacherActivityDetailProps) {
-  const [activity, setActivity] = useState<Activity | undefined>(() => findActivityById(courseId, activityId));
+  const [activity, setActivity] = useState<Activity | undefined>(() => getInitialActivityById(courseId, activityId));
   const [attempts, setAttempts] = useState<ActivityAttempt[]>(() =>
-    mockActivityAttempts.filter((attempt) => attempt.activityId === activityId)
+    getInitialActivityAttempts().filter((attempt) => attempt.activityId === activityId)
   );
-  const [course, setCourse] = useState<Course | undefined>(() => findCourseById(courseId));
+  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "teacher"));
   const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
 
   useEffect(() => {
-    const activities = [...readStoredTeacherActivities(), ...mockActivities];
-    const allAttempts = [...readStoredActivityAttempts(), ...mockActivityAttempts];
-    const courses = [...readStoredTeacherCourses(), ...teacherCourses];
-
-    setActivity(findActivityById(courseId, activityId, activities));
-    setAttempts(allAttempts.filter((attempt) => attempt.activityId === activityId));
-    setCourse(findCourseById(courseId, courses));
+    setActivity(getActivityById(courseId, activityId));
+    setAttempts(getActivityAttempts().filter((attempt) => attempt.activityId === activityId));
+    setCourse(getCourseById(courseId, "teacher"));
     setHasLoadedStoredData(true);
   }, [activityId, courseId]);
 

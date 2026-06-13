@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { createStoredTeacherActivity } from "../../lib/activityStorage";
 import type { ActivityOption, ActivityQuestion, ActivityStatus, ActivityType } from "../../lib/mock/activities";
+import { createActivity } from "../../lib/repositories/activityRepository";
 
 type ActivityFormProps = {
   courseId: string;
@@ -115,7 +115,7 @@ export function ActivityForm({ courseId }: ActivityFormProps) {
       return;
     }
 
-    const activity = createStoredTeacherActivity({
+    const activity = createActivity({
       courseId,
       description,
       questions: [createQuestion()],

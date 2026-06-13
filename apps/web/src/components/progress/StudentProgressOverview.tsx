@@ -1,53 +1,25 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { readStoredActivityAttempts, readStoredTeacherActivities } from "../../lib/activityStorage";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
-import { mockActivities, mockActivityAttempts } from "../../lib/mock/activities";
-import { studentCourses } from "../../lib/mock/courses";
-import { mockNotes } from "../../lib/mock/notes";
-import { mockTaskSubmissions, mockTasks } from "../../lib/mock/tasks";
-import { readStoredTeacherNotes } from "../../lib/noteStorage";
 import {
-  getStudentCourseProgress,
-  getStudentPendingProgress,
-  getStudentProgressSummary,
-  getStudentRecentProgress,
+  getInitialStudentProgressDataset,
+  getStudentProgress,
+  getStudentProgressDataset,
   type ProgressDataset
-} from "../../lib/progress";
-import { readStoredTaskSubmissions, readStoredTeacherTasks } from "../../lib/taskStorage";
+} from "../../lib/repositories/progressRepository";
 import { CourseProgressCard } from "./CourseProgressCard";
 import { PendingProgressItem } from "./PendingProgressItem";
 import { ProgressSummaryCard } from "./ProgressSummaryCard";
 import { RecentProgressItem } from "./RecentProgressItem";
 
-const initialStudentDataset: ProgressDataset = {
-  activities: mockActivities,
-  activityAttempts: mockActivityAttempts,
-  courses: studentCourses,
-  notes: mockNotes,
-  taskSubmissions: mockTaskSubmissions,
-  tasks: mockTasks
-};
-
 export function StudentProgressOverview() {
-  const [dataset, setDataset] = useState<ProgressDataset>(initialStudentDataset);
+  const [dataset, setDataset] = useState<ProgressDataset>(getInitialStudentProgressDataset);
 
   useEffect(() => {
-    setDataset({
-      activities: [...readStoredTeacherActivities(), ...mockActivities],
-      activityAttempts: [...readStoredActivityAttempts(), ...mockActivityAttempts],
-      courses: [...readStoredTeacherCourses(), ...studentCourses],
-      notes: [...readStoredTeacherNotes(), ...mockNotes],
-      taskSubmissions: [...readStoredTaskSubmissions(), ...mockTaskSubmissions],
-      tasks: [...readStoredTeacherTasks(), ...mockTasks]
-    });
+    setDataset(getStudentProgressDataset());
   }, []);
 
-  const summary = useMemo(() => getStudentProgressSummary(dataset), [dataset]);
-  const courseProgress = useMemo(() => getStudentCourseProgress(dataset), [dataset]);
-  const pendingItems = useMemo(() => getStudentPendingProgress(dataset), [dataset]);
-  const recentProgress = useMemo(() => getStudentRecentProgress(dataset), [dataset]);
+  const { courseProgress, pendingItems, recentProgress, summary } = useMemo(() => getStudentProgress(dataset), [dataset]);
 
   return (
     <div className="grid gap-8">

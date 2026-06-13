@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { createStoredTeacherCourse } from "../../lib/courseStorage";
+import { createCourse } from "../../lib/repositories/courseRepository";
 
 type CreateCourseErrors = {
   description: string;
@@ -34,7 +34,7 @@ export function CreateCourseForm() {
       return;
     }
 
-    createStoredTeacherCourse({ description, groupLabel, name });
+    createCourse({ description, groupLabel, name });
     router.push("/teacher/courses");
   }
 

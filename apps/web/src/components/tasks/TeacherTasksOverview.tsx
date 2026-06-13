@@ -1,22 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { readStoredTeacherCourses } from "../../lib/courseStorage";
-import { teacherCourses, type Course } from "../../lib/mock/courses";
-import { mockTaskSubmissions, mockTasks, type Task, type TaskSubmission } from "../../lib/mock/tasks";
-import { readStoredTaskSubmissions, readStoredTeacherTasks } from "../../lib/taskStorage";
+import { getCourses, getInitialCourses, type Course } from "../../lib/repositories/courseRepository";
+import { getInitialTaskSubmissions, getInitialTasks, getTaskSubmissions, getTasks, type Task, type TaskSubmission } from "../../lib/repositories/taskRepository";
 import { TasksList } from "./TasksList";
 
 export function TeacherTasksOverview() {
-  const [tasks, setTasks] = useState<Task[]>(mockTasks);
-  const [courses, setCourses] = useState<Course[]>(teacherCourses);
-  const [submissions, setSubmissions] = useState<TaskSubmission[]>(mockTaskSubmissions);
+  const [tasks, setTasks] = useState<Task[]>(getInitialTasks());
+  const [courses, setCourses] = useState<Course[]>(getInitialCourses("teacher"));
+  const [submissions, setSubmissions] = useState<TaskSubmission[]>(getInitialTaskSubmissions());
   const [selectedCourseId, setSelectedCourseId] = useState("all");
 
   useEffect(() => {
-    setTasks([...readStoredTeacherTasks(), ...mockTasks]);
-    setCourses([...readStoredTeacherCourses(), ...teacherCourses]);
-    setSubmissions([...readStoredTaskSubmissions(), ...mockTaskSubmissions]);
+    setTasks(getTasks());
+    setCourses(getCourses("teacher"));
+    setSubmissions(getTaskSubmissions());
   }, []);
 
   const courseNames = useMemo(() => new Map(courses.map((course) => [course.id, course.name])), [courses]);
