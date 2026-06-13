@@ -1,13 +1,20 @@
-import type { Note, NoteStatus } from "./mock/notes";
+import type { Note, NoteBlock, NoteStatus } from "./mock/notes";
 
 const storedNotesKey = "aulify.teacherNotes";
 
 export type StoredNoteInput = {
-  content: string;
+  blocks?: NoteBlock[];
+  content?: string;
   courseId: string;
+  future?: Note["future"];
   status: NoteStatus;
   summary: string;
   title: string;
+};
+
+export type StoredNoteUpdateInput = StoredNoteInput & {
+  id: string;
+  createdAt: string;
 };
 
 function createNoteId(title: string) {
@@ -47,13 +54,35 @@ export function createStoredTeacherNote(input: StoredNoteInput) {
     courseId: input.courseId,
     title: input.title.trim(),
     summary: input.summary.trim(),
-    content: input.content.trim(),
+    content: input.content?.trim(),
+    blocks: input.blocks,
+    future: input.future,
     status: input.status,
     createdAt: now,
     updatedAt: now
   };
 
   const nextNotes = [note, ...readStoredTeacherNotes()];
+  window.localStorage.setItem(storedNotesKey, JSON.stringify(nextNotes));
+
+  return note;
+}
+
+export function saveStoredTeacherNote(input: StoredNoteUpdateInput) {
+  const note: Note = {
+    id: input.id,
+    courseId: input.courseId,
+    title: input.title.trim(),
+    summary: input.summary.trim(),
+    content: input.content?.trim(),
+    blocks: input.blocks,
+    future: input.future,
+    status: input.status,
+    createdAt: input.createdAt,
+    updatedAt: new Date().toISOString()
+  };
+
+  const nextNotes = [note, ...readStoredTeacherNotes().filter((storedNote) => storedNote.id !== input.id)];
   window.localStorage.setItem(storedNotesKey, JSON.stringify(nextNotes));
 
   return note;

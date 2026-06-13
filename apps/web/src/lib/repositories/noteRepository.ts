@@ -1,14 +1,19 @@
-import { createStoredTeacherNote, readStoredTeacherNotes, type StoredNoteInput } from "../noteStorage";
+import { createStoredTeacherNote, readStoredTeacherNotes, saveStoredTeacherNote, type StoredNoteInput, type StoredNoteUpdateInput } from "../noteStorage";
 import {
   findNoteById,
   getCourseNotes,
+  getRenderableNoteBlocks,
   getPublishedNotes,
+  hasMeaningfulNoteBlocks,
   mockNotes,
   type Note,
+  type NoteBlock,
+  type NoteBlockType,
+  type NoteChecklistItem,
   type NoteStatus
 } from "../mock/notes";
 
-export type { Note, NoteStatus, StoredNoteInput };
+export type { Note, NoteBlock, NoteBlockType, NoteChecklistItem, NoteStatus, StoredNoteInput, StoredNoteUpdateInput };
 
 type NoteQueryOptions = {
   publishedOnly?: boolean;
@@ -45,3 +50,9 @@ export function getInitialNoteById(courseId: string, noteId: string, options?: N
 export function createNote(input: StoredNoteInput) {
   return createStoredTeacherNote(input);
 }
+
+export function updateNote(input: StoredNoteUpdateInput) {
+  return saveStoredTeacherNote(input);
+}
+
+export { getRenderableNoteBlocks, hasMeaningfulNoteBlocks };

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AppShell } from "../../../../../../components/app/AppShell";
 import { NoteForm } from "../../../../../../components/notes/NoteForm";
-import { findCourseById } from "../../../../../../lib/mock/courses";
+import { getInitialCourseById } from "../../../../../../lib/repositories/courseRepository";
 
 type NewTeacherNotePageProps = {
   params: Promise<{
@@ -11,7 +11,7 @@ type NewTeacherNotePageProps = {
 
 export default async function NewTeacherNotePage({ params }: NewTeacherNotePageProps) {
   const { courseId } = await params;
-  const course = findCourseById(courseId);
+  const course = getInitialCourseById(courseId, "teacher");
   const courseName = course?.name ?? "Curso seleccionado";
 
   return (
@@ -29,7 +29,7 @@ export default async function NewTeacherNotePage({ params }: NewTeacherNotePageP
         </Link>
       }
     >
-      <div className="max-w-3xl">
+      <div className="max-w-4xl">
         <NoteForm courseId={courseId} />
       </div>
     </AppShell>

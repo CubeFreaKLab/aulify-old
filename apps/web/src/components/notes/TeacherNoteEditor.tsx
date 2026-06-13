@@ -3,16 +3,16 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
-import { NoteDetail } from "./NoteDetail";
+import { NoteForm } from "./NoteForm";
 import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 import { getInitialNoteById, getNoteById, type Note } from "../../lib/repositories/noteRepository";
 
-type TeacherNoteDetailProps = {
+type TeacherNoteEditorProps = {
   courseId: string;
   noteId: string;
 };
 
-export function TeacherNoteDetail({ courseId, noteId }: TeacherNoteDetailProps) {
+export function TeacherNoteEditor({ courseId, noteId }: TeacherNoteEditorProps) {
   const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "teacher"));
   const [note, setNote] = useState<Note | undefined>(() => getInitialNoteById(courseId, noteId));
   const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
@@ -29,13 +29,13 @@ export function TeacherNoteDetail({ courseId, noteId }: TeacherNoteDetailProps) 
         activeHref="/teacher/notes"
         role="teacher"
         title="Cargando nota"
-        subtitle="Estamos preparando el contenido."
+        subtitle="Estamos preparando el editor."
         primaryAction={
           <Link
-            href={`/teacher/courses/${courseId}`}
+            href={`/teacher/courses/${courseId}/notes/${noteId}`}
             className="inline-flex min-h-12 items-center justify-center rounded-full border border-neutral-black bg-neutral-white px-6 text-base font-bold text-neutral-black"
           >
-            Volver al curso
+            Volver a la nota
           </Link>
         }
       >
@@ -73,37 +73,20 @@ export function TeacherNoteDetail({ courseId, noteId }: TeacherNoteDetailProps) 
     <AppShell
       activeHref="/teacher/notes"
       role="teacher"
-      title={note.title}
-      subtitle={`${course.name} · ${note.summary}`}
+      title="Editar nota"
+      subtitle={`${course.name} · ${note.title}`}
       primaryAction={
         <Link
-          href={`/teacher/courses/${courseId}`}
+          href={`/teacher/courses/${courseId}/notes/${note.id}`}
           className="inline-flex min-h-12 items-center justify-center rounded-full border border-neutral-black bg-neutral-white px-6 text-base font-bold text-neutral-black transition-colors duration-base hover:border-brand-green hover:text-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
         >
-          Volver al curso
+          Cancelar
         </Link>
       }
     >
-      <NoteDetail
-        courseName={course.name}
-        note={note}
-        teacherActions={
-          <>
-            <Link
-              href={`/teacher/courses/${courseId}/notes/${note.id}/edit`}
-              className="inline-flex min-h-10 items-center justify-center rounded-full border border-neutral-lightGray bg-neutral-white px-4 text-sm font-bold text-neutral-black transition-colors duration-base hover:border-brand-green hover:text-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
-            >
-              Editar nota
-            </Link>
-            <button
-              type="button"
-              className="inline-flex min-h-10 items-center justify-center rounded-full bg-brand-green px-4 text-sm font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
-            >
-              {note.status === "published" ? "Marcar como borrador" : "Publicar"}
-            </button>
-          </>
-        }
-      />
+      <div className="max-w-4xl">
+        <NoteForm courseId={courseId} note={note} />
+      </div>
     </AppShell>
   );
 }

@@ -1,9 +1,32 @@
 export type NoteStatus = "draft" | "published";
+export type NoteBlockType = "paragraph" | "heading" | "bullet_list" | "checklist" | "quote" | "resource_link" | "divider";
+
+export type NoteChecklistItem = {
+  checked: boolean;
+  id: string;
+  text: string;
+};
+
+export type NoteBlock = {
+  id: string;
+  items?: NoteChecklistItem[] | string[];
+  label?: string;
+  text?: string;
+  type: NoteBlockType;
+  url?: string;
+};
 
 export type Note = {
-  content: string;
+  blocks?: NoteBlock[];
+  content?: string;
   courseId: string;
   createdAt: string;
+  future?: {
+    audioRecordingUrl?: string;
+    generatedSummary?: string;
+    resources?: Array<{ label: string; url: string }>;
+    transcript?: string;
+  };
   id: string;
   status: NoteStatus;
   summary: string;
@@ -15,6 +38,18 @@ export const noteStatusLabels: Record<NoteStatus, string> = {
   draft: "Borrador",
   published: "Publicado"
 };
+
+function createLegacyParagraphBlocks(content?: string): NoteBlock[] {
+  return (content ?? "")
+    .split(/\n{2,}/)
+    .map((text) => text.trim())
+    .filter(Boolean)
+    .map((text, index) => ({
+      id: `legacy-paragraph-${index + 1}`,
+      type: "paragraph" as const,
+      text
+    }));
+}
 
 export const mockNotes: Note[] = [
   {
@@ -73,6 +108,28 @@ export function getPublishedNotes(notes: Note[] = mockNotes) {
 
 export function findNoteById(courseId: string, noteId: string, notes: Note[] = mockNotes) {
   return notes.find((note) => note.courseId === courseId && note.id === noteId);
+}
+
+export function getRenderableNoteBlocks(note: Note): NoteBlock[] {
+  return note.blocks?.length ? note.blocks : createLegacyParagraphBlocks(note.content);
+}
+
+export function hasMeaningfulNoteBlocks(blocks: NoteBlock[]) {
+  return blocks.some((block) => {
+    if (block.type === "divider") {
+      return true;
+    }
+
+    if (block.text?.trim() || block.label?.trim() || block.url?.trim()) {
+      return true;
+    }
+
+    if (block.items?.length) {
+      return block.items.some((item) => (typeof item === "string" ? item.trim() : item.text.trim()));
+    }
+
+    return false;
+  });
 }
 
 export function formatNoteDate(value: string) {

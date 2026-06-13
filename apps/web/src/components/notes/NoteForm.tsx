@@ -3,11 +3,20 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import type { NoteStatus } from "../../lib/mock/notes";
-import { createNote } from "../../lib/repositories/noteRepository";
+import { createEmptyBlock, NoteBlockEditor } from "./NoteBlockEditor";
+import {
+  createNote,
+  getRenderableNoteBlocks,
+  hasMeaningfulNoteBlocks,
+  updateNote,
+  type Note,
+  type NoteBlock,
+  type NoteStatus
+} from "../../lib/repositories/noteRepository";
 
 type NoteFormProps = {
   courseId: string;
+  note?: Note;
 };
 
 type NoteFormErrors = {
@@ -21,19 +30,45 @@ const statusOptions: Array<{ label: string; value: NoteStatus }> = [
   { label: "Publicado", value: "published" }
 ];
 
-export function NoteForm({ courseId }: NoteFormProps) {
+function serializeBlocksToContent(blocks: NoteBlock[]) {
+  return blocks
+    .map((block) => {
+      if (block.type === "divider") {
+        return "";
+      }
+
+      if (block.type === "resource_link") {
+        return [block.label, block.url].filter(Boolean).join(" ");
+      }
+
+      if (block.items?.length) {
+        return block.items.map((item) => (typeof item === "string" ? item : item.text)).join("\n");
+      }
+
+      return block.text ?? "";
+    })
+    .filter((value) => value.trim())
+    .join("\n\n");
+}
+
+function createInitialBlocks(note?: Note) {
+  const noteBlocks = note ? getRenderableNoteBlocks(note) : [];
+  return noteBlocks.length ? noteBlocks : [createEmptyBlock("paragraph")];
+}
+
+export function NoteForm({ courseId, note }: NoteFormProps) {
   const router = useRouter();
-  const [title, setTitle] = useState("");
-  const [summary, setSummary] = useState("");
-  const [content, setContent] = useState("");
-  const [status, setStatus] = useState<NoteStatus>("draft");
+  const [title, setTitle] = useState(note?.title ?? "");
+  const [summary, setSummary] = useState(note?.summary ?? "");
+  const [blocks, setBlocks] = useState<NoteBlock[]>(() => createInitialBlocks(note));
+  const [status, setStatus] = useState<NoteStatus>(note?.status ?? "draft");
   const [errors, setErrors] = useState<NoteFormErrors>({ content: "", summary: "", title: "" });
 
   function validateForm() {
     return {
       title: title.trim() ? "" : "Ingresa el título de la nota.",
       summary: summary.trim() ? "" : "Ingresa un resumen breve.",
-      content: content.trim() ? "" : "Ingresa el contenido de la nota."
+      content: hasMeaningfulNoteBlocks(blocks) ? "" : "Ingresa el contenido de la nota."
     };
   }
 
@@ -47,8 +82,22 @@ export function NoteForm({ courseId }: NoteFormProps) {
       return;
     }
 
-    const note = createNote({ content, courseId, status, summary, title });
-    router.push(`/teacher/courses/${courseId}/notes/${note.id}`);
+    const content = serializeBlocksToContent(blocks);
+    const savedNote = note
+      ? updateNote({
+          id: note.id,
+          createdAt: note.createdAt,
+          blocks,
+          content,
+          courseId,
+          future: note.future,
+          status,
+          summary,
+          title
+        })
+      : createNote({ blocks, content, courseId, status, summary, title });
+
+    router.push(`/teacher/courses/${courseId}/notes/${savedNote.id}`);
   }
 
   return (
@@ -89,23 +138,24 @@ export function NoteForm({ courseId }: NoteFormProps) {
         {errors.summary ? <span className="text-sm font-semibold text-[#E5484D]">{errors.summary}</span> : null}
       </label>
 
-      <label className="grid gap-2 text-sm font-bold text-neutral-black">
-        Contenido *
-        <textarea
-          className={[
-            "min-h-56 rounded-2xl border bg-neutral-white px-4 py-3 text-base font-medium leading-7 text-neutral-black outline-none transition duration-base focus:ring-4 focus:ring-[rgba(4,154,78,0.12)]",
-            errors.content ? "border-[#E5484D] focus:border-[#E5484D]" : "border-neutral-lightGray focus:border-brand-green"
-          ].join(" ")}
-          value={content}
-          onChange={(event) => {
-            setContent(event.target.value);
-            if (errors.content) {
-              setErrors((currentErrors) => ({ ...currentErrors, content: event.target.value.trim() ? "" : currentErrors.content }));
-            }
-          }}
-        />
+      <div className="grid gap-2 text-sm font-bold text-neutral-black">
+        <p className="m-0">Editor de nota *</p>
+        <div className={["rounded-3xl border p-4", errors.content ? "border-[#E5484D]" : "border-neutral-lightGray"].join(" ")}>
+          <NoteBlockEditor
+            blocks={blocks}
+            onChange={(nextBlocks) => {
+              setBlocks(nextBlocks);
+              if (errors.content) {
+                setErrors((currentErrors) => ({
+                  ...currentErrors,
+                  content: hasMeaningfulNoteBlocks(nextBlocks) ? "" : currentErrors.content
+                }));
+              }
+            }}
+          />
+        </div>
         {errors.content ? <span className="text-sm font-semibold text-[#E5484D]">{errors.content}</span> : null}
-      </label>
+      </div>
 
       <div className="grid gap-2">
         <p className="m-0 text-sm font-bold text-neutral-black">Estado</p>
