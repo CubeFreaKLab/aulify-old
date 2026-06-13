@@ -8,7 +8,9 @@ import { DashboardCard } from "../app/DashboardCard";
 import { readStoredTeacherCourses } from "../../lib/courseStorage";
 import { findCourseById, teacherCourses, type Course } from "../../lib/mock/courses";
 import { getCourseNotes, mockNotes, noteStatusLabels, type Note } from "../../lib/mock/notes";
+import { formatTaskDate, getCourseTasks, mockTaskSubmissions, mockTasks, taskStatusLabels, type Task, type TaskSubmission } from "../../lib/mock/tasks";
 import { readStoredTeacherNotes } from "../../lib/noteStorage";
+import { readStoredTaskSubmissions, readStoredTeacherTasks } from "../../lib/taskStorage";
 
 type TeacherCourseDetailProps = {
   courseId: string;
@@ -17,11 +19,15 @@ type TeacherCourseDetailProps = {
 export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
   const [course, setCourse] = useState<Course | undefined>(() => findCourseById(courseId));
   const [notes, setNotes] = useState<Note[]>(() => getCourseNotes(courseId, mockNotes));
+  const [tasks, setTasks] = useState<Task[]>(() => getCourseTasks(courseId, mockTasks));
+  const [submissions, setSubmissions] = useState<TaskSubmission[]>(mockTaskSubmissions);
   const [hasLoadedStoredCourses, setHasLoadedStoredCourses] = useState(false);
 
   useEffect(() => {
     setCourse(findCourseById(courseId, [...readStoredTeacherCourses(), ...teacherCourses]));
     setNotes(getCourseNotes(courseId, [...readStoredTeacherNotes(), ...mockNotes]));
+    setTasks(getCourseTasks(courseId, [...readStoredTeacherTasks(), ...mockTasks]));
+    setSubmissions([...readStoredTaskSubmissions(), ...mockTaskSubmissions]);
     setHasLoadedStoredCourses(true);
   }, [courseId]);
 
@@ -89,7 +95,7 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardCard label="Estudiantes" value={String(course.studentsCount)} helper={course.groupLabel} />
         <DashboardCard label="Contenidos" value={String(Math.max(course.contentsCount, notes.length))} helper="Materiales publicados" />
-        <DashboardCard label="Tareas" value={String(course.tasksCount)} helper="Asignaciones activas" />
+        <DashboardCard label="Tareas" value={String(Math.max(course.tasksCount, tasks.length))} helper="Asignaciones activas" />
         <DashboardCard label="Actividades" value={String(course.activitiesCount)} helper={course.updatedAtLabel} />
       </section>
 
@@ -100,7 +106,13 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
         >
           Agregar contenido
         </Link>
-        {["Crear tarea", "Crear actividad"].map((label) => (
+        <Link
+          href={`/teacher/courses/${courseId}/tasks/new`}
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand-green px-5 text-sm font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+        >
+          Crear tarea
+        </Link>
+        {["Crear actividad"].map((label) => (
           <button
             type="button"
             className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand-green px-5 text-sm font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
@@ -121,7 +133,19 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
           }))}
           title="Contenidos"
         />
-        <CoursePreviewList emptyLabel="Aún no hay tareas en este curso." items={course.tasks} title="Tareas" />
+        <CoursePreviewList
+          emptyLabel="Aún no hay tareas en este curso."
+          items={tasks.map((task) => {
+            const submissionsCount = submissions.filter((submission) => submission.taskId === task.id).length;
+
+            return {
+              title: task.title,
+              detail: `${taskStatusLabels[task.status]} · ${formatTaskDate(task.dueDate)} · ${submissionsCount} entregas`,
+              href: `/teacher/courses/${courseId}/tasks/${task.id}`
+            };
+          })}
+          title="Tareas"
+        />
         <CoursePreviewList emptyLabel="Aún no hay actividades en este curso." items={course.activities} title="Actividades" />
       </div>
     </AppShell>

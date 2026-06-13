@@ -8,7 +8,19 @@ import { CoursePreviewList } from "./CoursePreviewList";
 import { readStoredTeacherCourses } from "../../lib/courseStorage";
 import { findCourseById, studentCourses, type Course } from "../../lib/mock/courses";
 import { getCourseNotes, getPublishedNotes, mockNotes, type Note } from "../../lib/mock/notes";
+import {
+  formatTaskDate,
+  getCourseTasks,
+  getPublishedTasks,
+  getStudentTaskState,
+  mockTaskSubmissions,
+  mockTasks,
+  studentTaskStateLabels,
+  type Task,
+  type TaskSubmission
+} from "../../lib/mock/tasks";
 import { readStoredTeacherNotes } from "../../lib/noteStorage";
+import { readStoredTaskSubmissions, readStoredTeacherTasks } from "../../lib/taskStorage";
 
 type StudentCourseDetailProps = {
   courseId: string;
@@ -22,17 +34,34 @@ function createNotePreviewItems(courseId: string, notes: Note[]) {
   }));
 }
 
+function createTaskPreviewItems(courseId: string, tasks: Task[], submissions: TaskSubmission[]) {
+  return tasks.map((task) => {
+    const state = getStudentTaskState(task, submissions);
+
+    return {
+      title: task.title,
+      detail: `${studentTaskStateLabels[state]} · ${formatTaskDate(task.dueDate)} · ${task.points} puntos`,
+      href: `/student/courses/${courseId}/tasks/${task.id}`
+    };
+  });
+}
+
 export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
   const [course, setCourse] = useState<Course | undefined>(() => findCourseById(courseId, studentCourses));
   const [notes, setNotes] = useState<Note[]>(() => getCourseNotes(courseId, getPublishedNotes(mockNotes)));
+  const [tasks, setTasks] = useState<Task[]>(() => getCourseTasks(courseId, getPublishedTasks(mockTasks)));
+  const [submissions, setSubmissions] = useState<TaskSubmission[]>(mockTaskSubmissions);
   const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
 
   useEffect(() => {
     const courses = [...readStoredTeacherCourses(), ...studentCourses];
     const publishedNotes = getPublishedNotes([...readStoredTeacherNotes(), ...mockNotes]);
+    const publishedTasks = getPublishedTasks([...readStoredTeacherTasks(), ...mockTasks]);
 
     setCourse(findCourseById(courseId, courses));
     setNotes(getCourseNotes(courseId, publishedNotes));
+    setTasks(getCourseTasks(courseId, publishedTasks));
+    setSubmissions([...readStoredTaskSubmissions(), ...mockTaskSubmissions]);
     setHasLoadedStoredData(true);
   }, [courseId]);
 
@@ -99,14 +128,14 @@ export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
     >
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardCard label="Progreso" value={course.progress.label} helper="Avance del curso" />
-        <DashboardCard label="Tareas pendientes" value={String(course.pendingTasksCount)} helper="Por completar" />
+        <DashboardCard label="Tareas pendientes" value={String(Math.max(course.pendingTasksCount, tasks.length))} helper="Por completar" />
         <DashboardCard label="Actividades" value={String(course.pendingActivitiesCount)} helper="Asignadas" />
         <DashboardCard label="Contenidos" value={String(Math.max(course.contentsCount, notes.length))} helper="Disponibles" />
       </section>
 
       <div className="mt-8 grid gap-4 xl:grid-cols-3">
         <CoursePreviewList emptyLabel="Aún no hay contenidos recientes." items={createNotePreviewItems(courseId, notes)} title="Contenidos recientes" />
-        <CoursePreviewList emptyLabel="No tienes tareas pendientes." items={course.tasks} title="Tareas pendientes" />
+        <CoursePreviewList emptyLabel="No tienes tareas pendientes." items={createTaskPreviewItems(courseId, tasks, submissions)} title="Tareas pendientes" />
         <CoursePreviewList emptyLabel="No tienes actividades por completar." items={course.activities} title="Actividades por completar" />
       </div>
     </AppShell>
