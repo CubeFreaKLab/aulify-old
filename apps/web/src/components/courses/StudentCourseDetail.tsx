@@ -5,7 +5,19 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { DashboardCard } from "../app/DashboardCard";
 import { CoursePreviewList } from "./CoursePreviewList";
+import { readStoredActivityAttempts, readStoredTeacherActivities } from "../../lib/activityStorage";
 import { readStoredTeacherCourses } from "../../lib/courseStorage";
+import {
+  activityTypeLabels,
+  getCourseActivities,
+  getPublishedActivities,
+  getStudentActivityState,
+  mockActivities,
+  mockActivityAttempts,
+  studentActivityStateLabels,
+  type Activity,
+  type ActivityAttempt
+} from "../../lib/mock/activities";
 import { findCourseById, studentCourses, type Course } from "../../lib/mock/courses";
 import { getCourseNotes, getPublishedNotes, mockNotes, type Note } from "../../lib/mock/notes";
 import {
@@ -46,22 +58,39 @@ function createTaskPreviewItems(courseId: string, tasks: Task[], submissions: Ta
   });
 }
 
+function createActivityPreviewItems(courseId: string, activities: Activity[], attempts: ActivityAttempt[]) {
+  return activities.map((activity) => {
+    const state = getStudentActivityState(activity, attempts);
+
+    return {
+      title: activity.title,
+      detail: `${activityTypeLabels[activity.type]} · ${studentActivityStateLabels[state]}`,
+      href: `/student/courses/${courseId}/activities/${activity.id}`
+    };
+  });
+}
+
 export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
   const [course, setCourse] = useState<Course | undefined>(() => findCourseById(courseId, studentCourses));
   const [notes, setNotes] = useState<Note[]>(() => getCourseNotes(courseId, getPublishedNotes(mockNotes)));
   const [tasks, setTasks] = useState<Task[]>(() => getCourseTasks(courseId, getPublishedTasks(mockTasks)));
   const [submissions, setSubmissions] = useState<TaskSubmission[]>(mockTaskSubmissions);
+  const [activities, setActivities] = useState<Activity[]>(() => getCourseActivities(courseId, getPublishedActivities(mockActivities)));
+  const [activityAttempts, setActivityAttempts] = useState<ActivityAttempt[]>(mockActivityAttempts);
   const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
 
   useEffect(() => {
     const courses = [...readStoredTeacherCourses(), ...studentCourses];
     const publishedNotes = getPublishedNotes([...readStoredTeacherNotes(), ...mockNotes]);
     const publishedTasks = getPublishedTasks([...readStoredTeacherTasks(), ...mockTasks]);
+    const publishedActivities = getPublishedActivities([...readStoredTeacherActivities(), ...mockActivities]);
 
     setCourse(findCourseById(courseId, courses));
     setNotes(getCourseNotes(courseId, publishedNotes));
     setTasks(getCourseTasks(courseId, publishedTasks));
     setSubmissions([...readStoredTaskSubmissions(), ...mockTaskSubmissions]);
+    setActivities(getCourseActivities(courseId, publishedActivities));
+    setActivityAttempts([...readStoredActivityAttempts(), ...mockActivityAttempts]);
     setHasLoadedStoredData(true);
   }, [courseId]);
 
@@ -129,14 +158,18 @@ export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DashboardCard label="Progreso" value={course.progress.label} helper="Avance del curso" />
         <DashboardCard label="Tareas pendientes" value={String(Math.max(course.pendingTasksCount, tasks.length))} helper="Por completar" />
-        <DashboardCard label="Actividades" value={String(course.pendingActivitiesCount)} helper="Asignadas" />
+        <DashboardCard label="Actividades" value={String(Math.max(course.pendingActivitiesCount, activities.length))} helper="Asignadas" />
         <DashboardCard label="Contenidos" value={String(Math.max(course.contentsCount, notes.length))} helper="Disponibles" />
       </section>
 
       <div className="mt-8 grid gap-4 xl:grid-cols-3">
         <CoursePreviewList emptyLabel="Aún no hay contenidos recientes." items={createNotePreviewItems(courseId, notes)} title="Contenidos recientes" />
         <CoursePreviewList emptyLabel="No tienes tareas pendientes." items={createTaskPreviewItems(courseId, tasks, submissions)} title="Tareas pendientes" />
-        <CoursePreviewList emptyLabel="No tienes actividades por completar." items={course.activities} title="Actividades por completar" />
+        <CoursePreviewList
+          emptyLabel="No tienes actividades por completar."
+          items={createActivityPreviewItems(courseId, activities, activityAttempts)}
+          title="Actividades por completar"
+        />
       </div>
     </AppShell>
   );

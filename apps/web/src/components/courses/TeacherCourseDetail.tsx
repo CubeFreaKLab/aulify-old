@@ -5,7 +5,17 @@ import { useEffect, useState } from "react";
 import { CoursePreviewList } from "./CoursePreviewList";
 import { AppShell } from "../app/AppShell";
 import { DashboardCard } from "../app/DashboardCard";
+import { readStoredActivityAttempts, readStoredTeacherActivities } from "../../lib/activityStorage";
 import { readStoredTeacherCourses } from "../../lib/courseStorage";
+import {
+  activityStatusLabels,
+  activityTypeLabels,
+  getCourseActivities,
+  mockActivities,
+  mockActivityAttempts,
+  type Activity,
+  type ActivityAttempt
+} from "../../lib/mock/activities";
 import { findCourseById, teacherCourses, type Course } from "../../lib/mock/courses";
 import { getCourseNotes, mockNotes, noteStatusLabels, type Note } from "../../lib/mock/notes";
 import { formatTaskDate, getCourseTasks, mockTaskSubmissions, mockTasks, taskStatusLabels, type Task, type TaskSubmission } from "../../lib/mock/tasks";
@@ -21,6 +31,8 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
   const [notes, setNotes] = useState<Note[]>(() => getCourseNotes(courseId, mockNotes));
   const [tasks, setTasks] = useState<Task[]>(() => getCourseTasks(courseId, mockTasks));
   const [submissions, setSubmissions] = useState<TaskSubmission[]>(mockTaskSubmissions);
+  const [activities, setActivities] = useState<Activity[]>(() => getCourseActivities(courseId, mockActivities));
+  const [activityAttempts, setActivityAttempts] = useState<ActivityAttempt[]>(mockActivityAttempts);
   const [hasLoadedStoredCourses, setHasLoadedStoredCourses] = useState(false);
 
   useEffect(() => {
@@ -28,6 +40,8 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
     setNotes(getCourseNotes(courseId, [...readStoredTeacherNotes(), ...mockNotes]));
     setTasks(getCourseTasks(courseId, [...readStoredTeacherTasks(), ...mockTasks]));
     setSubmissions([...readStoredTaskSubmissions(), ...mockTaskSubmissions]);
+    setActivities(getCourseActivities(courseId, [...readStoredTeacherActivities(), ...mockActivities]));
+    setActivityAttempts([...readStoredActivityAttempts(), ...mockActivityAttempts]);
     setHasLoadedStoredCourses(true);
   }, [courseId]);
 
@@ -96,7 +110,7 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
         <DashboardCard label="Estudiantes" value={String(course.studentsCount)} helper={course.groupLabel} />
         <DashboardCard label="Contenidos" value={String(Math.max(course.contentsCount, notes.length))} helper="Materiales publicados" />
         <DashboardCard label="Tareas" value={String(Math.max(course.tasksCount, tasks.length))} helper="Asignaciones activas" />
-        <DashboardCard label="Actividades" value={String(course.activitiesCount)} helper={course.updatedAtLabel} />
+        <DashboardCard label="Actividades" value={String(Math.max(course.activitiesCount, activities.length))} helper={course.updatedAtLabel} />
       </section>
 
       <section className="mt-8 flex flex-wrap gap-3">
@@ -112,15 +126,12 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
         >
           Crear tarea
         </Link>
-        {["Crear actividad"].map((label) => (
-          <button
-            type="button"
-            className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand-green px-5 text-sm font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
-            key={label}
-          >
-            {label}
-          </button>
-        ))}
+        <Link
+          href={`/teacher/courses/${courseId}/activities/new`}
+          className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand-green px-5 text-sm font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+        >
+          Crear actividad
+        </Link>
       </section>
 
       <div className="mt-8 grid gap-4 xl:grid-cols-3">
@@ -146,7 +157,19 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
           })}
           title="Tareas"
         />
-        <CoursePreviewList emptyLabel="Aún no hay actividades en este curso." items={course.activities} title="Actividades" />
+        <CoursePreviewList
+          emptyLabel="Aún no hay actividades en este curso."
+          items={activities.map((activity) => {
+            const responsesCount = activityAttempts.filter((attempt) => attempt.activityId === activity.id).length;
+
+            return {
+              title: activity.title,
+              detail: `${activityTypeLabels[activity.type]} · ${activityStatusLabels[activity.status]} · ${responsesCount} respuestas`,
+              href: `/teacher/courses/${courseId}/activities/${activity.id}`
+            };
+          })}
+          title="Actividades"
+        />
       </div>
     </AppShell>
   );
