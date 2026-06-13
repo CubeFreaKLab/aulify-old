@@ -1,4 +1,4 @@
-const appBaseUrl = (process.env.NEXT_PUBLIC_APP_URL || "https://app.aulify.org").replace(/\/$/, "");
+const appBaseUrl = (process.env.NEXT_PUBLIC_WEB_APP_URL || "http://localhost:3001").replace(/\/$/, "");
 
 export const appLinks = {
   login: `${appBaseUrl}/auth/login`,

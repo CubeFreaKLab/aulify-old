@@ -148,13 +148,13 @@ export default function RegisterPage() {
   return (
     <AuthSplitLayout>
       <div className="w-full max-w-[520px]">
-        <div className="mb-8 text-center">
-          <h1 className="m-0 text-[44px] font-extrabold leading-[1.03] text-neutral-black sm:text-[56px] xl:text-[64px]">
+        <div className="mb-9 text-center">
+          <h1 className="m-0 text-[48px] font-extrabold leading-[1.03] text-neutral-black sm:text-[60px] xl:text-[70px]">
             Crea tu cuenta
             <br />
             en Aulify
           </h1>
-          <p className="mt-6 text-[20px] font-medium leading-normal text-neutral-black">
+          <p className="mt-7 text-[20px] font-medium leading-normal text-neutral-black">
             ¿Ya tienes una cuenta?{" "}
             <Link href="/auth/login" className="text-brand-green underline decoration-brand-green underline-offset-4">
               Iniciar sesión

@@ -1,3 +1,4 @@
+import { AuthTransitionLink } from "./AuthTransitionLink";
 import { appLinks } from "../../lib/appLinks";
 
 export function HeroSection() {
@@ -17,12 +18,12 @@ export function HeroSection() {
           </p>
 
           <div className="mt-10 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center">
-            <a
+            <AuthTransitionLink
               className="inline-flex min-h-[60px] w-full items-center justify-center rounded-[16px] border border-brand-green bg-brand-green px-8 text-base font-semibold text-neutral-white shadow-card transition-colors duration-base hover:bg-neutral-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green sm:w-auto"
               href={appLinks.register}
             >
               Crear cuenta
-            </a>
+            </AuthTransitionLink>
             <a
               className="inline-flex min-h-[60px] w-full items-center justify-center gap-3 rounded-[16px] border border-neutral-black bg-neutral-white px-6 text-base font-semibold text-neutral-black shadow-soft transition-colors duration-base hover:border-brand-green hover:text-brand-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green sm:w-auto"
               href="#como-funciona"

@@ -1,3 +1,4 @@
+import { AuthTransitionLink } from "./AuthTransitionLink";
 import { appLinks } from "../../lib/appLinks";
 
 const navLinks = [
@@ -38,18 +39,18 @@ export function PublicNavbar() {
         </div>
 
         <div className="order-2 flex w-full min-w-0 items-center justify-center gap-2 sm:col-start-2 sm:row-start-1 sm:w-auto sm:justify-self-end sm:gap-3 lg:order-none lg:col-start-3">
-          <a
+          <AuthTransitionLink
             className="min-w-0 flex-1 rounded-[14px] border border-neutral-black bg-neutral-white px-4 py-2.5 text-center text-sm font-semibold text-neutral-black shadow-soft transition-colors duration-base hover:border-brand-green hover:text-brand-green focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green sm:flex-none sm:px-5 sm:py-3"
             href={appLinks.login}
           >
             Iniciar sesión
-          </a>
-          <a
+          </AuthTransitionLink>
+          <AuthTransitionLink
             className="min-w-0 flex-1 rounded-[14px] border border-brand-green bg-brand-green px-4 py-2.5 text-center text-sm font-semibold text-neutral-white shadow-card transition-colors duration-base hover:bg-neutral-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-green sm:flex-none sm:px-5 sm:py-3"
             href={appLinks.register}
           >
             Crear cuenta
-          </a>
+          </AuthTransitionLink>
         </div>
       </nav>
     </header>
