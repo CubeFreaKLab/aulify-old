@@ -2,14 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { AuthDivider } from "../../../components/auth/AuthDivider";
 import { AuthInput } from "../../../components/auth/AuthInput";
 import { AuthRoleSelector, type AuthRole } from "../../../components/auth/AuthRoleSelector";
 import { AuthSplitLayout } from "../../../components/auth/AuthSplitLayout";
 import { SocialLoginButton } from "../../../components/auth/SocialLoginButton";
-
-const registerRedirectPath = "/teacher/dashboard";
+import { getDashboardPathForSession, getMockSession, setMockSession } from "../../../lib/mockAuth";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -37,6 +36,14 @@ export default function RegisterPage() {
     password: 0,
     confirmPassword: 0
   });
+
+  useEffect(() => {
+    const session = getMockSession();
+
+    if (session) {
+      router.replace(getDashboardPathForSession(session));
+    }
+  }, [router]);
 
   function validateFullName(value: string) {
     return value.trim() ? "" : "Ingresa tu nombre completo.";
@@ -142,7 +149,13 @@ export default function RegisterPage() {
       return;
     }
 
-    router.push(registerRedirectPath);
+    const session = setMockSession({
+      email,
+      name: fullName,
+      role
+    });
+
+    router.push(getDashboardPathForSession(session));
   }
 
   return (

@@ -2,20 +2,35 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useEffect, useState } from "react";
 import { AuthDivider } from "../../../components/auth/AuthDivider";
 import { AuthInput } from "../../../components/auth/AuthInput";
+import { AuthRoleSelector, type AuthRole } from "../../../components/auth/AuthRoleSelector";
 import { AuthSplitLayout } from "../../../components/auth/AuthSplitLayout";
 import { SocialLoginButton } from "../../../components/auth/SocialLoginButton";
+import { getDashboardPathForSession, getMockSession, setMockSession } from "../../../lib/mockAuth";
+
+function getLoginSessionName(role: AuthRole) {
+  return role === "teacher" ? "Profesor Aulify" : "Estudiante Aulify";
+}
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<AuthRole>("teacher");
   const [errors, setErrors] = useState({ email: "", password: "" });
   const [touched, setTouched] = useState({ email: false, password: false });
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [shakeKeys, setShakeKeys] = useState({ email: 0, password: 0 });
+
+  useEffect(() => {
+    const session = getMockSession();
+
+    if (session) {
+      router.replace(getDashboardPathForSession(session));
+    }
+  }, [router]);
 
   function validateEmail(value: string) {
     if (!value.trim()) {
@@ -97,7 +112,13 @@ export default function LoginPage() {
       return;
     }
 
-    router.push("/teacher/dashboard");
+    const session = setMockSession({
+      email,
+      name: getLoginSessionName(role),
+      role
+    });
+
+    router.push(getDashboardPathForSession(session));
   }
 
   return (
@@ -140,6 +161,8 @@ export default function LoginPage() {
             onBlur={validatePasswordOnBlur}
             onChange={(event) => updatePassword(event.target.value)}
           />
+
+          <AuthRoleSelector value={role} onChange={setRole} />
 
           <Link href="#" className="mt-2 w-fit text-[20px] font-medium text-brand-green">
             ¿Olvidaste tu contraseña?
