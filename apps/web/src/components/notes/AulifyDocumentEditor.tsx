@@ -4,6 +4,7 @@ import type { Block, PartialBlock } from "@blocknote/core";
 import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
 import { useEffect } from "react";
+import { aulifyBlockNoteDictionary } from "./aulifyBlockNoteDictionary";
 import { aulifyBlockNoteTheme } from "./aulifyBlockNoteTheme";
 
 type AulifyDocumentEditorProps = {
@@ -19,6 +20,7 @@ export function AulifyDocumentEditor({ initialBlocks, onChange }: AulifyDocument
   const editor = useCreateBlockNote({
     animations: true,
     defaultStyles: true,
+    dictionary: aulifyBlockNoteDictionary,
     dropCursor: {
       color: "#049A4E",
       width: 3
@@ -38,7 +40,7 @@ export function AulifyDocumentEditor({ initialBlocks, onChange }: AulifyDocument
 
   return (
     <div className="aulify-blocknote-shell">
-      <BlockNoteView editor={editor} theme={aulifyBlockNoteTheme} onChange={() => onChange(cloneDocument(editor.document))} />
+      <BlockNoteView editor={editor} theme={{ light: aulifyBlockNoteTheme, dark: aulifyBlockNoteTheme }} onChange={() => onChange(cloneDocument(editor.document))} />
     </div>
   );
 }
