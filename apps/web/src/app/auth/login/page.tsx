@@ -5,21 +5,15 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 import { AuthDivider } from "../../../components/auth/AuthDivider";
 import { AuthInput } from "../../../components/auth/AuthInput";
-import { AuthRoleSelector, type AuthRole } from "../../../components/auth/AuthRoleSelector";
 import { AuthSplitLayout } from "../../../components/auth/AuthSplitLayout";
 import { SocialLoginButton } from "../../../components/auth/SocialLoginButton";
-import { getCurrentSession, getDashboardPathForSession, setCurrentSession } from "../../../lib/repositories/authRepository";
-
-function getLoginSessionName(role: AuthRole) {
-  return role === "teacher" ? "Profesor Aulify" : "Estudiante Aulify";
-}
+import { getCurrentSession, getDashboardPathForSession, loginWithMockCredentials } from "../../../lib/repositories/authRepository";
 
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<AuthRole>("teacher");
-  const [errors, setErrors] = useState({ email: "", password: "" });
+  const [errors, setErrors] = useState({ auth: "", email: "", password: "" });
   const [touched, setTouched] = useState({ email: false, password: false });
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [shakeKeys, setShakeKeys] = useState({ email: 0, password: 0 });
@@ -58,6 +52,7 @@ export default function LoginPage() {
 
   function updateEmail(value: string) {
     setEmail(value);
+    setErrors((currentErrors) => ({ ...currentErrors, auth: "" }));
 
     if (hasSubmitted || touched.email) {
       setErrors((currentErrors) => ({ ...currentErrors, email: validateEmail(value) }));
@@ -66,6 +61,7 @@ export default function LoginPage() {
 
   function updatePassword(value: string) {
     setPassword(value);
+    setErrors((currentErrors) => ({ ...currentErrors, auth: "" }));
 
     if (hasSubmitted || touched.password) {
       setErrors((currentErrors) => ({ ...currentErrors, password: validatePassword(value) }));
@@ -97,6 +93,7 @@ export default function LoginPage() {
     setHasSubmitted(true);
 
     const nextErrors = {
+      auth: "",
       email: validateEmail(email),
       password: validatePassword(password)
     };
@@ -112,11 +109,16 @@ export default function LoginPage() {
       return;
     }
 
-    const session = setCurrentSession({
-      email,
-      name: getLoginSessionName(role),
-      role
-    });
+    const session = loginWithMockCredentials(email, password);
+
+    if (!session) {
+      setErrors((currentErrors) => ({ ...currentErrors, auth: "Correo o contraseña incorrectos." }));
+      setShakeKeys((currentKeys) => ({
+        email: currentKeys.email + 1,
+        password: currentKeys.password + 1
+      }));
+      return;
+    }
 
     router.push(getDashboardPathForSession(session));
   }
@@ -162,7 +164,11 @@ export default function LoginPage() {
             onChange={(event) => updatePassword(event.target.value)}
           />
 
-          <AuthRoleSelector value={role} onChange={setRole} />
+          {errors.auth ? (
+            <p className="m-0 rounded-3xl border border-[#E5484D] bg-neutral-white px-5 py-4 text-[16px] font-semibold text-[#E5484D]">
+              {errors.auth}
+            </p>
+          ) : null}
 
           <Link href="#" className="mt-2 w-fit text-[20px] font-medium text-brand-green">
             ¿Olvidaste tu contraseña?
@@ -179,7 +185,9 @@ export default function LoginPage() {
             <AuthDivider />
           </div>
 
-          <SocialLoginButton>Continuar con Google</SocialLoginButton>
+          <SocialLoginButton disabled title="Próximamente">
+            Continuar con Google
+          </SocialLoginButton>
 
           <p className="mt-8 text-[16px] font-medium leading-[1.65] text-neutral-darkGray">
             Al iniciar sesión, aceptas nuestros{" "}

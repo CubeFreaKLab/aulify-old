@@ -1,13 +1,14 @@
 "use client";
 
+import type { PartialBlock } from "@blocknote/core";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { type FormEvent, useState } from "react";
-import { createEmptyBlock, NoteBlockEditor } from "./NoteBlockEditor";
+import { type FormEvent, useCallback, useState } from "react";
+import { NoteDocumentEditor } from "./NoteDocumentEditor";
 import {
   createNote,
+  getRenderableDocumentBlocks,
   getRenderableNoteBlocks,
-  hasMeaningfulNoteBlocks,
   updateNote,
   type Note,
   type NoteBlock,
@@ -30,7 +31,48 @@ const statusOptions: Array<{ label: string; value: NoteStatus }> = [
   { label: "Publicado", value: "published" }
 ];
 
-function serializeBlocksToContent(blocks: NoteBlock[]) {
+function getInlineText(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (!Array.isArray(content)) {
+    return "";
+  }
+
+  return content
+    .map((item) => {
+      if (typeof item === "string") {
+        return item;
+      }
+
+      if (item && typeof item === "object" && "text" in item && typeof item.text === "string") {
+        return item.text;
+      }
+
+      return "";
+    })
+    .join("");
+}
+
+function serializeDocumentToContent(blocks: PartialBlock[]) {
+  return blocks
+    .map((block) => getInlineText(block.content))
+    .filter((value) => value.trim())
+    .join("\n\n");
+}
+
+function hasMeaningfulDocument(blocks: PartialBlock[]) {
+  return blocks.some((block) => getInlineText(block.content).trim() || block.type === "divider" || block.type === "table");
+}
+
+function createInitialDocumentBlocks(note?: Note): PartialBlock[] {
+  const documentBlocks = note ? getRenderableDocumentBlocks(note) : [];
+
+  return documentBlocks.length ? documentBlocks : [{ content: "", type: "paragraph" }];
+}
+
+function serializeLegacyBlocksToContent(blocks: NoteBlock[]) {
   return blocks
     .map((block) => {
       if (block.type === "divider") {
@@ -51,26 +93,41 @@ function serializeBlocksToContent(blocks: NoteBlock[]) {
     .join("\n\n");
 }
 
-function createInitialBlocks(note?: Note) {
+function createLegacyBlocks(note?: Note) {
   const noteBlocks = note ? getRenderableNoteBlocks(note) : [];
-  return noteBlocks.length ? noteBlocks : [createEmptyBlock("paragraph")];
+  return noteBlocks.length ? noteBlocks : [];
 }
 
 export function NoteForm({ courseId, note }: NoteFormProps) {
   const router = useRouter();
   const [title, setTitle] = useState(note?.title ?? "");
   const [summary, setSummary] = useState(note?.summary ?? "");
-  const [blocks, setBlocks] = useState<NoteBlock[]>(() => createInitialBlocks(note));
+  const [documentBlocks, setDocumentBlocks] = useState<PartialBlock[]>(() => createInitialDocumentBlocks(note));
   const [status, setStatus] = useState<NoteStatus>(note?.status ?? "draft");
   const [errors, setErrors] = useState<NoteFormErrors>({ content: "", summary: "", title: "" });
+  const legacyBlocks = createLegacyBlocks(note);
 
   function validateForm() {
     return {
       title: title.trim() ? "" : "Ingresa el título de la nota.",
       summary: summary.trim() ? "" : "Ingresa un resumen breve.",
-      content: hasMeaningfulNoteBlocks(blocks) ? "" : "Ingresa el contenido de la nota."
+      content: hasMeaningfulDocument(documentBlocks) ? "" : "Ingresa el contenido de la nota."
     };
   }
+
+  const handleDocumentChange = useCallback(
+    (nextBlocks: PartialBlock[]) => {
+      setDocumentBlocks(nextBlocks);
+
+      if (errors.content) {
+        setErrors((currentErrors) => ({
+          ...currentErrors,
+          content: hasMeaningfulDocument(nextBlocks) ? "" : currentErrors.content
+        }));
+      }
+    },
+    [errors.content]
+  );
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -82,33 +139,63 @@ export function NoteForm({ courseId, note }: NoteFormProps) {
       return;
     }
 
-    const content = serializeBlocksToContent(blocks);
+    const content = serializeDocumentToContent(documentBlocks) || serializeLegacyBlocksToContent(legacyBlocks);
     const savedNote = note
       ? updateNote({
           id: note.id,
           createdAt: note.createdAt,
-          blocks,
+          blocks: legacyBlocks.length ? legacyBlocks : note.blocks,
           content,
           courseId,
+          documentBlocks,
           future: note.future,
           status,
           summary,
           title
         })
-      : createNote({ blocks, content, courseId, status, summary, title });
+      : createNote({ content, courseId, documentBlocks, status, summary, title });
 
     router.push(`/teacher/courses/${courseId}/notes/${savedNote.id}`);
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="grid gap-5 rounded-3xl border border-neutral-lightGray bg-neutral-white p-5 sm:p-6">
-      <label className="grid gap-2 text-sm font-bold text-neutral-black">
-        Título de la nota *
+    <form onSubmit={handleSubmit} noValidate className="grid gap-6">
+      <section className="rounded-[32px] border border-neutral-lightGray bg-neutral-white px-5 py-6 sm:px-8 lg:px-10">
+        <div className="mb-5 flex flex-col gap-4 border-b border-neutral-lightGray pb-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="m-0 text-sm font-bold text-brand-green">Documento de clase</p>
+            <p className="m-0 mt-2 text-sm font-medium text-neutral-darkGray">Usa / dentro del editor para insertar títulos, listas, checklist, citas y enlaces.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {statusOptions.map((option) => {
+              const isSelected = option.value === status;
+
+              return (
+                <button
+                  type="button"
+                  className={[
+                    "min-h-10 rounded-full border px-4 text-sm font-bold transition-colors duration-base focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2",
+                    isSelected
+                      ? "border-brand-green bg-brand-green text-neutral-white"
+                      : "border-neutral-lightGray bg-neutral-white text-neutral-black hover:border-brand-green hover:text-brand-green"
+                  ].join(" ")}
+                  key={option.value}
+                  onClick={() => setStatus(option.value)}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <label className="sr-only" htmlFor="note-title">
+          Título de la nota
+        </label>
         <input
-          className={[
-            "h-14 rounded-2xl border bg-neutral-white px-4 text-base font-medium text-neutral-black outline-none transition duration-base focus:ring-4 focus:ring-[rgba(4,154,78,0.12)]",
-            errors.title ? "border-[#E5484D] focus:border-[#E5484D]" : "border-neutral-lightGray focus:border-brand-green"
-          ].join(" ")}
+          id="note-title"
+          className="w-full border-0 bg-transparent p-0 text-4xl font-extrabold leading-tight text-neutral-black outline-none placeholder:text-neutral-darkGray focus:ring-0 sm:text-5xl"
+          placeholder="Título de la nota"
           value={title}
           onChange={(event) => {
             setTitle(event.target.value);
@@ -117,16 +204,15 @@ export function NoteForm({ courseId, note }: NoteFormProps) {
             }
           }}
         />
-        {errors.title ? <span className="text-sm font-semibold text-[#E5484D]">{errors.title}</span> : null}
-      </label>
+        {errors.title ? <span className="mt-2 block text-sm font-semibold text-[#E5484D]">{errors.title}</span> : null}
 
-      <label className="grid gap-2 text-sm font-bold text-neutral-black">
-        Resumen breve *
+        <label className="sr-only" htmlFor="note-summary">
+          Resumen breve
+        </label>
         <textarea
-          className={[
-            "min-h-24 rounded-2xl border bg-neutral-white px-4 py-3 text-base font-medium leading-7 text-neutral-black outline-none transition duration-base focus:ring-4 focus:ring-[rgba(4,154,78,0.12)]",
-            errors.summary ? "border-[#E5484D] focus:border-[#E5484D]" : "border-neutral-lightGray focus:border-brand-green"
-          ].join(" ")}
+          id="note-summary"
+          className="mt-4 min-h-20 w-full resize-none border-0 bg-transparent p-0 text-lg font-medium leading-8 text-neutral-darkGray outline-none placeholder:text-neutral-darkGray focus:ring-0"
+          placeholder="Agrega una descripción breve para orientar a tus estudiantes."
           value={summary}
           onChange={(event) => {
             setSummary(event.target.value);
@@ -135,54 +221,15 @@ export function NoteForm({ courseId, note }: NoteFormProps) {
             }
           }}
         />
-        {errors.summary ? <span className="text-sm font-semibold text-[#E5484D]">{errors.summary}</span> : null}
-      </label>
+        {errors.summary ? <span className="mt-2 block text-sm font-semibold text-[#E5484D]">{errors.summary}</span> : null}
 
-      <div className="grid gap-2 text-sm font-bold text-neutral-black">
-        <p className="m-0">Editor de nota *</p>
-        <div className={["rounded-3xl border p-4", errors.content ? "border-[#E5484D]" : "border-neutral-lightGray"].join(" ")}>
-          <NoteBlockEditor
-            blocks={blocks}
-            onChange={(nextBlocks) => {
-              setBlocks(nextBlocks);
-              if (errors.content) {
-                setErrors((currentErrors) => ({
-                  ...currentErrors,
-                  content: hasMeaningfulNoteBlocks(nextBlocks) ? "" : currentErrors.content
-                }));
-              }
-            }}
-          />
+        <div className={["mt-6 rounded-[28px] border bg-neutral-white", errors.content ? "border-[#E5484D]" : "border-neutral-lightGray"].join(" ")}>
+          <NoteDocumentEditor initialBlocks={documentBlocks} onChange={handleDocumentChange} />
         </div>
-        {errors.content ? <span className="text-sm font-semibold text-[#E5484D]">{errors.content}</span> : null}
-      </div>
+        {errors.content ? <span className="mt-2 block text-sm font-semibold text-[#E5484D]">{errors.content}</span> : null}
+      </section>
 
-      <div className="grid gap-2">
-        <p className="m-0 text-sm font-bold text-neutral-black">Estado</p>
-        <div className="flex flex-wrap gap-2">
-          {statusOptions.map((option) => {
-            const isSelected = option.value === status;
-
-            return (
-              <button
-                type="button"
-                className={[
-                  "min-h-11 rounded-full border px-5 text-sm font-bold transition-colors duration-base focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2",
-                  isSelected
-                    ? "border-brand-green bg-brand-green text-neutral-white"
-                    : "border-neutral-lightGray bg-neutral-white text-neutral-black hover:border-brand-green hover:text-brand-green"
-                ].join(" ")}
-                key={option.value}
-                onClick={() => setStatus(option.value)}
-              >
-                {option.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+      <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-full border border-neutral-lightGray bg-neutral-white/95 p-2 shadow-card backdrop-blur sm:flex-row sm:justify-end">
         <Link
           href={`/teacher/courses/${courseId}`}
           className="inline-flex min-h-12 items-center justify-center rounded-full border border-neutral-black bg-neutral-white px-6 text-base font-bold text-neutral-black transition-colors duration-base hover:border-brand-green hover:text-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"

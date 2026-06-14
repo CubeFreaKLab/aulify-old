@@ -1,3 +1,5 @@
+import type { PartialBlock } from "@blocknote/core";
+
 export type NoteStatus = "draft" | "published";
 export type NoteBlockType = "paragraph" | "heading" | "bullet_list" | "checklist" | "quote" | "resource_link" | "divider";
 
@@ -21,6 +23,7 @@ export type Note = {
   content?: string;
   courseId: string;
   createdAt: string;
+  documentBlocks?: PartialBlock[];
   future?: {
     audioRecordingUrl?: string;
     generatedSummary?: string;
@@ -49,6 +52,21 @@ function createLegacyParagraphBlocks(content?: string): NoteBlock[] {
       type: "paragraph" as const,
       text
     }));
+}
+
+function createLegacyDocumentBlocks(content?: string): PartialBlock[] {
+  const paragraphs = (content ?? "")
+    .split(/\n{2,}/)
+    .map((text) => text.trim())
+    .filter(Boolean);
+
+  return paragraphs.length
+    ? paragraphs.map((text) => ({ content: text, type: "paragraph" }))
+    : [{ content: "", type: "paragraph" }];
+}
+
+export function getRenderableDocumentBlocks(note: Note): PartialBlock[] {
+  return note.documentBlocks?.length ? note.documentBlocks : createLegacyDocumentBlocks(note.content);
 }
 
 export const mockNotes: Note[] = [

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { NoteBlocksRenderer } from "./NoteBlocksRenderer";
+import { NoteDocumentViewer } from "./NoteDocumentViewer";
 import { formatNoteDate, noteStatusLabels } from "../../lib/mock/notes";
-import { getRenderableNoteBlocks, type Note } from "../../lib/repositories/noteRepository";
+import { getRenderableDocumentBlocks, type Note } from "../../lib/repositories/noteRepository";
 
 type NoteDetailProps = {
   courseName: string;
@@ -31,7 +31,7 @@ export function NoteDetail({ courseName, note, teacherActions }: NoteDetailProps
 
       <div className="pt-6">
         <p className="m-0 text-sm font-semibold text-neutral-darkGray">Actualizado {formatNoteDate(note.updatedAt)}</p>
-        <NoteBlocksRenderer blocks={getRenderableNoteBlocks(note)} />
+        <NoteDocumentViewer key={`${note.id}-${note.updatedAt}`} blocks={getRenderableDocumentBlocks(note)} />
       </div>
     </article>
   );

@@ -1,3 +1,4 @@
+import type { PartialBlock } from "@blocknote/core";
 import type { Note, NoteBlock, NoteStatus } from "./mock/notes";
 
 const storedNotesKey = "aulify.teacherNotes";
@@ -6,6 +7,7 @@ export type StoredNoteInput = {
   blocks?: NoteBlock[];
   content?: string;
   courseId: string;
+  documentBlocks?: PartialBlock[];
   future?: Note["future"];
   status: NoteStatus;
   summary: string;
@@ -56,6 +58,7 @@ export function createStoredTeacherNote(input: StoredNoteInput) {
     summary: input.summary.trim(),
     content: input.content?.trim(),
     blocks: input.blocks,
+    documentBlocks: input.documentBlocks,
     future: input.future,
     status: input.status,
     createdAt: now,
@@ -76,6 +79,7 @@ export function saveStoredTeacherNote(input: StoredNoteUpdateInput) {
     summary: input.summary.trim(),
     content: input.content?.trim(),
     blocks: input.blocks,
+    documentBlocks: input.documentBlocks,
     future: input.future,
     status: input.status,
     createdAt: input.createdAt,

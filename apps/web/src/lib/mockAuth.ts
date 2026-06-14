@@ -14,7 +14,43 @@ export type MockSessionInput = {
   role: MockSessionRole;
 };
 
+export type MockUserAccount = {
+  createdAt: string;
+  email: string;
+  id: string;
+  name: string;
+  password: string;
+  role: MockSessionRole;
+};
+
+export type MockUserAccountInput = {
+  email: string;
+  name: string;
+  password: string;
+  role: MockSessionRole;
+};
+
 const mockSessionKey = "aulify.mockSession";
+const mockUsersKey = "aulify-mock-users";
+
+const demoAccounts: MockUserAccount[] = [
+  {
+    id: "demo-teacher",
+    name: "Profesor Demo",
+    email: "profesor@aulify.test",
+    password: "aulify123",
+    role: "teacher",
+    createdAt: "2026-01-01T00:00:00.000Z"
+  },
+  {
+    id: "demo-student",
+    name: "Estudiante Demo",
+    email: "estudiante@aulify.test",
+    password: "aulify123",
+    role: "student",
+    createdAt: "2026-01-01T00:00:00.000Z"
+  }
+];
 
 function createSessionId(email: string) {
   const slug = email
@@ -24,6 +60,59 @@ function createSessionId(email: string) {
     .replace(/^-+|-+$/g, "");
 
   return `${slug || "usuario"}-${Date.now()}`;
+}
+
+function normalizeEmail(email: string) {
+  return email.trim().toLowerCase();
+}
+
+export function getMockUsers(): MockUserAccount[] {
+  if (typeof window === "undefined") {
+    return [];
+  }
+
+  const rawValue = window.localStorage.getItem(mockUsersKey);
+
+  if (!rawValue) {
+    return [];
+  }
+
+  try {
+    const users = JSON.parse(rawValue) as MockUserAccount[];
+    return Array.isArray(users) ? users : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveMockUser(input: MockUserAccountInput) {
+  const email = normalizeEmail(input.email);
+  const currentUsers = getMockUsers();
+  const existingUser = currentUsers.find((user) => normalizeEmail(user.email) === email);
+  const account: MockUserAccount = {
+    id: existingUser?.id ?? createSessionId(email),
+    name: input.name.trim(),
+    email,
+    password: input.password,
+    role: input.role,
+    createdAt: existingUser?.createdAt ?? new Date().toISOString()
+  };
+  const nextUsers = [account, ...currentUsers.filter((user) => normalizeEmail(user.email) !== email)];
+
+  window.localStorage.setItem(mockUsersKey, JSON.stringify(nextUsers));
+
+  return account;
+}
+
+export function resolveMockLogin(email: string, password: string) {
+  const normalizedEmail = normalizeEmail(email);
+  const registeredUser = getMockUsers().find((user) => normalizeEmail(user.email) === normalizedEmail && user.password === password);
+
+  if (registeredUser) {
+    return registeredUser;
+  }
+
+  return demoAccounts.find((account) => account.email === normalizedEmail && account.password === password) ?? null;
 }
 
 export function getMockSession(): MockSession | null {

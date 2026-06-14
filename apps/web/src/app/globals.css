@@ -48,3 +48,89 @@ body {
 .auth-field-shake {
   animation: auth-field-shake 320ms ease-out;
 }
+
+.aulify-blocknote-shell,
+.aulify-blocknote-readonly {
+  color: #0F0F0F;
+  font-family: var(--font-inter), Inter, sans-serif;
+}
+
+.aulify-blocknote-shell .bn-container,
+.aulify-blocknote-readonly .bn-container {
+  background: #FFFFFF;
+  color: #0F0F0F;
+  font-family: var(--font-inter), Inter, sans-serif;
+}
+
+.aulify-blocknote-shell .bn-editor {
+  min-height: 520px;
+  padding: 28px 22px 36px;
+}
+
+.aulify-blocknote-readonly .bn-editor {
+  padding: 24px 0 0;
+}
+
+.aulify-blocknote-shell .bn-editor,
+.aulify-blocknote-readonly .bn-editor {
+  background: #FFFFFF;
+  color: #0F0F0F;
+}
+
+.aulify-blocknote-shell .bn-editor [data-content-type],
+.aulify-blocknote-readonly .bn-editor [data-content-type] {
+  color: #0F0F0F;
+}
+
+.aulify-blocknote-shell .bn-editor h1,
+.aulify-blocknote-readonly .bn-editor h1 {
+  color: #0F0F0F;
+  font-size: 2rem;
+  line-height: 1.15;
+}
+
+.aulify-blocknote-shell .bn-editor h2,
+.aulify-blocknote-readonly .bn-editor h2 {
+  color: #0F0F0F;
+  font-size: 1.6rem;
+  line-height: 1.2;
+}
+
+.aulify-blocknote-shell .bn-editor h3,
+.aulify-blocknote-readonly .bn-editor h3 {
+  color: #0F0F0F;
+  font-size: 1.3rem;
+  line-height: 1.25;
+}
+
+.aulify-blocknote-shell .bn-editor a,
+.aulify-blocknote-readonly .bn-editor a {
+  color: #049A4E;
+}
+
+.aulify-blocknote-shell .bn-editor blockquote,
+.aulify-blocknote-readonly .bn-editor blockquote {
+  border-left-color: #049A4E;
+}
+
+.aulify-blocknote-shell .bn-side-menu {
+  color: #60615A;
+}
+
+.aulify-blocknote-shell .bn-side-menu button:hover,
+.aulify-blocknote-shell .bn-toolbar button:hover,
+.aulify-blocknote-shell .bn-menu-dropdown button:hover {
+  background: #FAFAF8;
+  color: #049A4E;
+}
+
+.aulify-blocknote-readonly .bn-side-menu,
+.aulify-blocknote-readonly .bn-formatting-toolbar {
+  display: none;
+}
+
+@media (min-width: 640px) {
+  .aulify-blocknote-shell .bn-editor {
+    padding: 34px 38px 44px;
+  }
+}

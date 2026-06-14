@@ -2,6 +2,7 @@ import { createStoredTeacherNote, readStoredTeacherNotes, saveStoredTeacherNote,
 import {
   findNoteById,
   getCourseNotes,
+  getRenderableDocumentBlocks,
   getRenderableNoteBlocks,
   getPublishedNotes,
   hasMeaningfulNoteBlocks,
@@ -55,4 +56,4 @@ export function updateNote(input: StoredNoteUpdateInput) {
   return saveStoredTeacherNote(input);
 }
 
-export { getRenderableNoteBlocks, hasMeaningfulNoteBlocks };
+export { getRenderableDocumentBlocks, getRenderableNoteBlocks, hasMeaningfulNoteBlocks };

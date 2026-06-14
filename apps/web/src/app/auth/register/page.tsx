@@ -8,7 +8,7 @@ import { AuthInput } from "../../../components/auth/AuthInput";
 import { AuthRoleSelector, type AuthRole } from "../../../components/auth/AuthRoleSelector";
 import { AuthSplitLayout } from "../../../components/auth/AuthSplitLayout";
 import { SocialLoginButton } from "../../../components/auth/SocialLoginButton";
-import { getCurrentSession, getDashboardPathForSession, setCurrentSession } from "../../../lib/repositories/authRepository";
+import { getCurrentSession, getDashboardPathForSession, registerMockUser } from "../../../lib/repositories/authRepository";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -149,9 +149,10 @@ export default function RegisterPage() {
       return;
     }
 
-    const session = setCurrentSession({
+    const session = registerMockUser({
       email,
       name: fullName,
+      password,
       role
     });
 
@@ -234,7 +235,9 @@ export default function RegisterPage() {
             <AuthDivider />
           </div>
 
-          <SocialLoginButton>Continuar con Google</SocialLoginButton>
+          <SocialLoginButton disabled title="Próximamente">
+            Continuar con Google
+          </SocialLoginButton>
 
           <p className="mt-7 text-[16px] font-medium leading-[1.65] text-neutral-darkGray">
             Al crear una cuenta, aceptas nuestros{" "}
