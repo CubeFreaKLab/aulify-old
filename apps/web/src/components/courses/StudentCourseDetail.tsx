@@ -148,6 +148,19 @@ export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
         <DashboardCard label="Contenidos" value={String(Math.max(course.contentsCount, notes.length))} helper="Disponibles" />
       </section>
 
+      <section className="mt-8 flex flex-col gap-3 rounded-3xl border border-neutral-lightGray bg-neutral-white p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="m-0 text-xl font-extrabold text-neutral-black">Asistencia</h2>
+          <p className="m-0 mt-1 text-sm font-medium text-neutral-darkGray">Consulta tu resumen y el historial registrado para este curso.</p>
+        </div>
+        <Link
+          href={`/student/courses/${courseId}/attendance`}
+          className="inline-flex min-h-11 items-center justify-center rounded-full border border-neutral-black bg-neutral-white px-5 text-sm font-bold text-neutral-black transition-colors duration-base hover:border-brand-green hover:text-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+        >
+          Ver asistencia
+        </Link>
+      </section>
+
       <div className="mt-8 grid gap-4 xl:grid-cols-3">
         <CoursePreviewList emptyLabel="Aún no hay contenidos recientes." items={createNotePreviewItems(courseId, notes)} title="Contenidos recientes" />
         <CoursePreviewList emptyLabel="No tienes tareas pendientes." items={createTaskPreviewItems(courseId, tasks, submissions)} title="Tareas pendientes" />

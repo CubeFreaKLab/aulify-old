@@ -128,6 +128,12 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
         >
           Crear actividad
         </Link>
+        <Link
+          href={`/teacher/courses/${courseId}/attendance`}
+          className="inline-flex min-h-11 items-center justify-center rounded-full border border-neutral-black bg-neutral-white px-5 text-sm font-bold text-neutral-black transition-colors duration-base hover:border-brand-green hover:text-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+        >
+          Asistencia
+        </Link>
       </section>
 
       <div className="mt-8 grid gap-4 xl:grid-cols-3">
