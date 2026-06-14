@@ -6,16 +6,20 @@ import { type FormEvent, useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import {
   attendanceStatusLabels,
-  getAttendanceSessionById,
+  getAttendanceSessionByIdAsync,
   getCourseAttendanceRoster,
+  getCourseAttendanceRosterAsync,
   getEditableAttendanceRecords,
+  getEditableAttendanceRecordsAsync,
   getInitialAttendanceSessionById,
-  saveAttendanceSessionWithRecords,
+  saveAttendanceSessionWithRecordsAsync,
   type AttendanceSession,
+  type AttendanceStudent,
   type AttendanceStatus,
   type StoredAttendanceRecordInput
 } from "../../lib/repositories/attendanceRepository";
-import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 import { useMockSession } from "../../lib/useMockSession";
 
 type AttendanceSessionFormProps = {
@@ -37,7 +41,11 @@ function getTodayValue() {
 }
 
 function createDefaultDraftRecords(courseId: string): AttendanceRecordDraft[] {
-  return getCourseAttendanceRoster(courseId).map((student) => ({
+  return createDefaultDraftRecordsFromRoster(courseId, getCourseAttendanceRoster(courseId));
+}
+
+function createDefaultDraftRecordsFromRoster(courseId: string, roster: AttendanceStudent[]): AttendanceRecordDraft[] {
+  return roster.map((student) => ({
     courseId,
     note: "",
     sessionId: "",
@@ -55,32 +63,64 @@ export function AttendanceSessionForm({ courseId, sessionId }: AttendanceSession
   const isNewSession = sessionId === "new";
   const router = useRouter();
   const { session: currentSession } = useMockSession();
-  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "teacher"));
+  const [course, setCourse] = useState<Course | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialCourseById(courseId, "teacher")));
   const [attendanceSession, setAttendanceSession] = useState<AttendanceSession | undefined>(() =>
-    isNewSession ? undefined : getInitialAttendanceSessionById(sessionId)
+    isFirebaseDataSource() || isNewSession ? undefined : getInitialAttendanceSessionById(sessionId)
   );
-  const [title, setTitle] = useState(() => (isNewSession ? "Asistencia de clase" : getInitialAttendanceSessionById(sessionId)?.title ?? ""));
-  const [date, setDate] = useState(() => (isNewSession ? getTodayValue() : getInitialAttendanceSessionById(sessionId)?.date ?? getTodayValue()));
-  const [records, setRecords] = useState<AttendanceRecordDraft[]>(() => createDraftRecords(isNewSession ? undefined : getInitialAttendanceSessionById(sessionId), courseId));
+  const [title, setTitle] = useState(() =>
+    isFirebaseDataSource() || isNewSession ? "Asistencia de clase" : getInitialAttendanceSessionById(sessionId)?.title ?? ""
+  );
+  const [date, setDate] = useState(() =>
+    isFirebaseDataSource() || isNewSession ? getTodayValue() : getInitialAttendanceSessionById(sessionId)?.date ?? getTodayValue()
+  );
+  const [records, setRecords] = useState<AttendanceRecordDraft[]>(() =>
+    isFirebaseDataSource() ? [] : createDraftRecords(isNewSession ? undefined : getInitialAttendanceSessionById(sessionId), courseId)
+  );
   const [errors, setErrors] = useState<AttendanceFormErrors>({ date: "", title: "" });
-  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
+  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(!isFirebaseDataSource());
+  const [isSaving, setIsSaving] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
-    const nextCourse = getCourseById(courseId, "teacher");
-    const nextSession = isNewSession ? undefined : getAttendanceSessionById(sessionId);
+    let isActive = true;
 
-    setCourse(nextCourse);
-    setAttendanceSession(nextSession);
+    void Promise.all([
+      getCourseByIdAsync(courseId, "teacher"),
+      isNewSession ? Promise.resolve(undefined) : getAttendanceSessionByIdAsync(sessionId)
+    ])
+      .then(async ([nextCourse, nextSession]) => {
+        const nextRecords = nextSession
+          ? await getEditableAttendanceRecordsAsync(nextSession)
+          : createDefaultDraftRecordsFromRoster(courseId, await getCourseAttendanceRosterAsync(courseId));
 
-    if (nextSession) {
-      setTitle(nextSession.title);
-      setDate(nextSession.date);
-      setRecords(createDraftRecords(nextSession, courseId));
-    } else if (isNewSession) {
-      setRecords(createDefaultDraftRecords(courseId));
-    }
+        if (isActive) {
+          setCourse(nextCourse);
+          setAttendanceSession(nextSession);
 
-    setHasLoadedStoredData(true);
+          if (nextSession) {
+            setTitle(nextSession.title);
+            setDate(nextSession.date);
+          }
+
+          setRecords(nextRecords);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setCourse(undefined);
+          setAttendanceSession(undefined);
+          setRecords([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setHasLoadedStoredData(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [courseId, isNewSession, sessionId]);
 
   function updateRecord(studentId: string, updates: Partial<AttendanceRecordDraft>) {
@@ -96,34 +136,42 @@ export function AttendanceSessionForm({ courseId, sessionId }: AttendanceSession
     };
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitError("");
 
     const nextErrors = validateForm();
     setErrors(nextErrors);
 
-    if (nextErrors.date || nextErrors.title) {
+    if (nextErrors.date || nextErrors.title || !records.length) {
       return;
     }
 
-    saveAttendanceSessionWithRecords(
-      courseId,
-      {
-        createdBy: attendanceSession?.createdBy ?? currentSession?.name ?? "Profesor Demo",
-        date,
-        title
-      },
-      records.map((record) => ({
-        id: record.id,
-        note: record.note,
-        status: record.status,
-        studentId: record.studentId,
-        studentName: record.studentName
-      })),
-      attendanceSession
-    );
+    try {
+      setIsSaving(true);
+      await saveAttendanceSessionWithRecordsAsync(
+        courseId,
+        {
+          createdBy: attendanceSession?.createdBy ?? currentSession?.name ?? "Profesor Demo",
+          date,
+          title
+        },
+        records.map((record) => ({
+          id: record.id,
+          note: record.note,
+          status: record.status,
+          studentId: record.studentId,
+          studentName: record.studentName
+        })),
+        attendanceSession
+      );
 
-    router.push(`/teacher/courses/${courseId}/attendance`);
+      router.push(`/teacher/courses/${courseId}/attendance`);
+    } catch {
+      setSubmitError("No se pudo guardar la asistencia.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   if (!course && !hasLoadedStoredData) {
@@ -222,33 +270,41 @@ export function AttendanceSessionForm({ courseId, sessionId }: AttendanceSession
             <p className="m-0 mt-1 text-sm font-medium text-neutral-darkGray">Selecciona el estado de asistencia y agrega una nota cuando sea necesario.</p>
           </div>
           <div className="grid divide-y divide-neutral-lightGray">
-            {records.map((record) => (
-              <div className="grid gap-3 p-5 lg:grid-cols-[1fr_220px_1fr] lg:items-center" key={record.studentId}>
-                <div>
-                  <p className="m-0 text-base font-extrabold text-neutral-black">{record.studentName}</p>
-                  <p className="m-0 mt-1 text-sm font-medium text-neutral-darkGray">{record.studentId}</p>
+            {records.length ? (
+              records.map((record) => (
+                <div className="grid gap-3 p-5 lg:grid-cols-[1fr_220px_1fr] lg:items-center" key={record.studentId}>
+                  <div>
+                    <p className="m-0 text-base font-extrabold text-neutral-black">{record.studentName}</p>
+                    <p className="m-0 mt-1 text-sm font-medium text-neutral-darkGray">{record.studentId}</p>
+                  </div>
+                  <select
+                    className="min-h-11 rounded-2xl border border-neutral-lightGray bg-neutral-white px-4 text-sm font-bold text-neutral-black outline-none transition focus:border-brand-green focus:ring-4 focus:ring-brand-green/10"
+                    value={record.status}
+                    onChange={(event) => updateRecord(record.studentId, { status: event.target.value as AttendanceStatus })}
+                  >
+                    {statusOptions.map((status) => (
+                      <option key={status} value={status}>
+                        {attendanceStatusLabels[status]}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    className="min-h-11 rounded-2xl border border-neutral-lightGray bg-neutral-white px-4 text-sm font-semibold text-neutral-black outline-none transition placeholder:text-neutral-darkGray focus:border-brand-green focus:ring-4 focus:ring-brand-green/10"
+                    placeholder="Nota opcional"
+                    value={record.note ?? ""}
+                    onChange={(event) => updateRecord(record.studentId, { note: event.target.value })}
+                  />
                 </div>
-                <select
-                  className="min-h-11 rounded-2xl border border-neutral-lightGray bg-neutral-white px-4 text-sm font-bold text-neutral-black outline-none transition focus:border-brand-green focus:ring-4 focus:ring-brand-green/10"
-                  value={record.status}
-                  onChange={(event) => updateRecord(record.studentId, { status: event.target.value as AttendanceStatus })}
-                >
-                  {statusOptions.map((status) => (
-                    <option key={status} value={status}>
-                      {attendanceStatusLabels[status]}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="min-h-11 rounded-2xl border border-neutral-lightGray bg-neutral-white px-4 text-sm font-semibold text-neutral-black outline-none transition placeholder:text-neutral-darkGray focus:border-brand-green focus:ring-4 focus:ring-brand-green/10"
-                  placeholder="Nota opcional"
-                  value={record.note ?? ""}
-                  onChange={(event) => updateRecord(record.studentId, { note: event.target.value })}
-                />
+              ))
+            ) : (
+              <div className="p-5">
+                <p className="m-0 text-base font-semibold text-neutral-darkGray">Todavía no hay estudiantes inscritos en este curso.</p>
               </div>
-            ))}
+            )}
           </div>
         </section>
+
+        {submitError ? <p className="m-0 text-sm font-semibold text-[#E5484D]">{submitError}</p> : null}
 
         <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-full border border-neutral-lightGray bg-neutral-white/95 p-2 shadow-card backdrop-blur sm:flex-row sm:justify-end">
           <Link
@@ -258,10 +314,11 @@ export function AttendanceSessionForm({ courseId, sessionId }: AttendanceSession
             Cancelar
           </Link>
           <button
+            disabled={isSaving || !records.length}
             type="submit"
-            className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+            className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Guardar asistencia
+            {isSaving ? "Guardando asistencia..." : "Guardar asistencia"}
           </button>
         </div>
       </form>

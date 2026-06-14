@@ -6,20 +6,21 @@ This document defines the first real data contract layer for the Aulify Firebase
 
 ## Scope
 
-Primary phase:
+Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`:
 
 - `users`
 - `profiles`
 - `courses`
 - `courseMembers`
 
-Planning only:
-
 - `notes`
 - `tasks`
 - `taskSubmissions`
 - `attendanceSessions`
 - `attendanceRecords`
+
+Remaining planning only:
+
 - `activities`
 - `activityAttempts`
 - `files`
@@ -305,6 +306,11 @@ Query patterns:
 
 - By `courseId`, ordered by `date`.
 
+Migration status:
+
+- Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+- Excel export reads these sessions from Firestore in firebase mode.
+
 ### `attendanceRecords`
 
 Suggested fields:
@@ -326,6 +332,12 @@ Query patterns:
 
 - By `sessionId`.
 - By `courseId` and `studentId` for student summary.
+
+Migration status:
+
+- Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+- Teacher attendance forms build the roster from active student `courseMembers` in firebase mode.
+- Students can read only their own attendance summary in the client flow. Firestore security rules are still required before production.
 
 ### `activities`
 
@@ -465,10 +477,11 @@ Migration order:
 2. `users` and `profiles`.
 3. `courses`.
 4. `courseMembers`.
-5. `notes` and `tasks`.
-6. `attendance` and `activities`.
-7. `files` and Firebase Storage.
-8. `liveQuizRooms`, `liveQuizPlayers`, and `liveQuizAnswers`.
+5. `notes`, `tasks`, and `taskSubmissions`.
+6. `attendanceSessions` and `attendanceRecords`.
+7. `activities` and `activityAttempts`.
+8. `files` and Firebase Storage.
+9. `liveQuizRooms`, `liveQuizPlayers`, and `liveQuizAnswers`.
 
 Module-by-module migration rule:
 

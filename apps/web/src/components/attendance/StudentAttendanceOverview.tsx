@@ -7,16 +7,18 @@ import { DashboardCard } from "../app/DashboardCard";
 import { AttendanceStatusBadge } from "./AttendanceStatusBadge";
 import {
   formatAttendanceDate,
-  getAttendanceRecordsBySessionId,
-  getAttendanceSessionsByCourseId,
+  getAttendanceRecordsBySessionIdAsync,
+  getAttendanceSessionsByCourseIdAsync,
   getInitialAttendanceSessionsByCourseId,
-  getStudentAttendanceSummary,
-  getStudentForAttendance,
+  getStudentAttendanceSummaryAsync,
+  getStudentForAttendanceAsync,
+  type AttendanceRecord,
   type AttendanceSession,
   type AttendanceStudent,
   type StudentAttendanceSummary
 } from "../../lib/repositories/attendanceRepository";
-import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 import { useMockSession } from "../../lib/useMockSession";
 
 type StudentAttendanceOverviewProps = {
@@ -28,36 +30,75 @@ function formatPercentage(value: number) {
 }
 
 export function StudentAttendanceOverview({ courseId }: StudentAttendanceOverviewProps) {
-  const { session } = useMockSession();
-  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "student"));
-  const [student, setStudent] = useState<AttendanceStudent | undefined>(() => getStudentForAttendance(courseId, session?.email));
+  const { hasLoadedSession, session } = useMockSession();
+  const [course, setCourse] = useState<Course | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialCourseById(courseId, "student")));
+  const [student, setStudent] = useState<AttendanceStudent | undefined>(undefined);
   const [summary, setSummary] = useState<StudentAttendanceSummary | undefined>(() => {
-    const initialStudent = getStudentForAttendance(courseId, session?.email);
-    return initialStudent ? getStudentAttendanceSummary(courseId, initialStudent.id) : undefined;
+    if (isFirebaseDataSource()) {
+      return undefined;
+    }
+
+    return undefined;
   });
-  const [sessions, setSessions] = useState<AttendanceSession[]>(() => getInitialAttendanceSessionsByCourseId(courseId));
-  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
+  const [sessions, setSessions] = useState<AttendanceSession[]>(() => (isFirebaseDataSource() ? [] : getInitialAttendanceSessionsByCourseId(courseId)));
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(!isFirebaseDataSource());
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    const nextStudent = getStudentForAttendance(courseId, session?.email);
+    if (!hasLoadedSession) {
+      return;
+    }
 
-    setCourse(getCourseById(courseId, "student"));
-    setStudent(nextStudent);
-    setSummary(nextStudent ? getStudentAttendanceSummary(courseId, nextStudent.id) : undefined);
-    setSessions(getAttendanceSessionsByCourseId(courseId));
-    setHasLoadedStoredData(true);
-  }, [courseId, session?.email]);
+    let isActive = true;
+
+    void (async () => {
+      const nextCourse = await getCourseByIdAsync(courseId, "student");
+      const nextStudent = await getStudentForAttendanceAsync(courseId, session?.email);
+      const nextSummary = nextStudent ? await getStudentAttendanceSummaryAsync(courseId, nextStudent.id) : undefined;
+      const nextSessions = await getAttendanceSessionsByCourseIdAsync(courseId);
+      const nextRecordsBySession = await Promise.all(nextSessions.map((item) => getAttendanceRecordsBySessionIdAsync(item.id)));
+
+      if (isActive) {
+        setCourse(nextCourse);
+        setStudent(nextStudent);
+        setSummary(nextSummary);
+        setSessions(nextSessions);
+        setRecords(nextRecordsBySession.flat());
+        setLoadError("");
+      }
+    })()
+      .catch(() => {
+        if (isActive) {
+          setCourse(undefined);
+          setStudent(undefined);
+          setSummary(undefined);
+          setSessions([]);
+          setRecords([]);
+          setLoadError("No se pudo cargar la asistencia.");
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setHasLoadedStoredData(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [courseId, hasLoadedSession, session?.email]);
 
   const sessionRows = useMemo(
     () =>
       sessions.map((attendanceSession) => {
         const record = student
-          ? getAttendanceRecordsBySessionId(attendanceSession.id).find((item) => item.studentId === student.id)
+          ? records.find((item) => item.sessionId === attendanceSession.id && item.studentId === student.id)
           : undefined;
 
         return { record, session: attendanceSession };
       }),
-    [sessions, student]
+    [records, sessions, student]
   );
 
   if (!course && !hasLoadedStoredData) {
@@ -83,8 +124,8 @@ export function StudentAttendanceOverview({ courseId }: StudentAttendanceOvervie
       <AppShell
         activeHref="/student/courses"
         role="student"
-        title="Asistencia no disponible"
-        subtitle="No encontramos información de asistencia para este curso."
+        title={loadError ? "Error al cargar asistencia" : "Asistencia no disponible"}
+        subtitle={loadError || "No encontramos información de asistencia para este curso."}
         primaryAction={
           <Link href={`/student/courses/${courseId}`} className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white">
             Volver al curso

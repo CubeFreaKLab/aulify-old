@@ -8,15 +8,17 @@ import { AttendanceStatusBadge } from "./AttendanceStatusBadge";
 import {
   exportCourseAttendanceToExcel,
   formatAttendanceDate,
-  getCourseAttendanceSummary,
+  getCourseAttendanceSummaryAsync,
   getInitialAttendanceSessionsByCourseId,
   getInitialCourseAttendanceSummary,
-  getSessionAttendanceSummary,
-  getAttendanceSessionsByCourseId,
+  getSessionAttendanceSummaryAsync,
+  getAttendanceSessionsByCourseIdAsync,
   type AttendanceSession,
+  type AttendanceStatusCount,
   type CourseAttendanceSummary
 } from "../../lib/repositories/attendanceRepository";
-import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 
 type TeacherAttendanceOverviewProps = {
   courseId: string;
@@ -26,28 +28,81 @@ function formatPercentage(value: number) {
   return `${value}%`;
 }
 
+function createEmptyCourseSummary(): CourseAttendanceSummary {
+  return {
+    absent: 0,
+    averageAttendance: 0,
+    excused: 0,
+    late: 0,
+    present: 0,
+    totalRecords: 0,
+    totalSessions: 0
+  };
+}
+
 export function TeacherAttendanceOverview({ courseId }: TeacherAttendanceOverviewProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "teacher"));
-  const [sessions, setSessions] = useState<AttendanceSession[]>(() => getInitialAttendanceSessionsByCourseId(courseId));
-  const [summary, setSummary] = useState<CourseAttendanceSummary>(() => getInitialCourseAttendanceSummary(courseId));
+  const [course, setCourse] = useState<Course | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialCourseById(courseId, "teacher")));
+  const [sessions, setSessions] = useState<AttendanceSession[]>(() => (isFirebaseDataSource() ? [] : getInitialAttendanceSessionsByCourseId(courseId)));
+  const [summary, setSummary] = useState<CourseAttendanceSummary>(() =>
+    isFirebaseDataSource() ? createEmptyCourseSummary() : getInitialCourseAttendanceSummary(courseId)
+  );
+  const [sessionSummaries, setSessionSummaries] = useState<Record<string, AttendanceStatusCount>>({});
   const [isExporting, setIsExporting] = useState(false);
   const [exportMessage, setExportMessage] = useState("");
-  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
+  const [exportError, setExportError] = useState("");
+  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(!isFirebaseDataSource());
+  const [loadError, setLoadError] = useState("");
 
   useEffect(() => {
-    setCourse(getCourseById(courseId, "teacher"));
-    setSessions(getAttendanceSessionsByCourseId(courseId));
-    setSummary(getCourseAttendanceSummary(courseId));
-    setHasLoadedStoredData(true);
+    let isActive = true;
+
+    void Promise.all([
+      getCourseByIdAsync(courseId, "teacher"),
+      getAttendanceSessionsByCourseIdAsync(courseId),
+      getCourseAttendanceSummaryAsync(courseId)
+    ])
+      .then(async ([nextCourse, nextSessions, nextSummary]) => {
+        const nextSessionSummaries = Object.fromEntries(
+          await Promise.all(
+            nextSessions.map(async (session) => [session.id, await getSessionAttendanceSummaryAsync(session.id)] as const)
+          )
+        );
+
+        if (isActive) {
+          setCourse(nextCourse);
+          setSessions(nextSessions);
+          setSummary(nextSummary);
+          setSessionSummaries(nextSessionSummaries);
+          setLoadError("");
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setCourse(undefined);
+          setLoadError("No se pudo cargar la asistencia.");
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setHasLoadedStoredData(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [courseId]);
 
   async function handleExport() {
     setIsExporting(true);
     setExportMessage("");
+    setExportError("");
 
     try {
       const result = await exportCourseAttendanceToExcel(courseId);
       setExportMessage(`Archivo generado: ${result.fileName}`);
+    } catch {
+      setExportError("No se pudo exportar el reporte.");
     } finally {
       setIsExporting(false);
     }
@@ -76,8 +131,8 @@ export function TeacherAttendanceOverview({ courseId }: TeacherAttendanceOvervie
       <AppShell
         activeHref="/teacher/courses"
         role="teacher"
-        title="Curso no encontrado"
-        subtitle="No pudimos encontrar el curso solicitado."
+        title={loadError ? "Error al cargar asistencia" : "Curso no encontrado"}
+        subtitle={loadError || "No pudimos encontrar el curso solicitado."}
         primaryAction={
           <Link href="/teacher/courses" className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white">
             Volver a cursos
@@ -129,12 +184,13 @@ export function TeacherAttendanceOverview({ courseId }: TeacherAttendanceOvervie
             disabled={isExporting}
             onClick={handleExport}
           >
-            {isExporting ? "Exportando..." : "Exportar Excel"}
+            {isExporting ? "Preparando reporte..." : "Exportar Excel"}
           </button>
         </div>
       </section>
 
       {exportMessage ? <p className="m-0 mt-3 text-sm font-semibold text-brand-green">{exportMessage}</p> : null}
+      {exportError ? <p className="m-0 mt-3 text-sm font-semibold text-[#E5484D]">{exportError}</p> : null}
 
       <section className="mt-5 overflow-hidden rounded-3xl border border-neutral-lightGray bg-neutral-white">
         {sessions.length ? (
@@ -153,7 +209,7 @@ export function TeacherAttendanceOverview({ courseId }: TeacherAttendanceOvervie
               </thead>
               <tbody>
                 {sessions.map((session) => {
-                  const counts = getSessionAttendanceSummary(session.id);
+                  const counts = sessionSummaries[session.id] ?? { absent: 0, excused: 0, late: 0, present: 0 };
 
                   return (
                     <tr className="border-b border-neutral-lightGray last:border-b-0" key={session.id}>
