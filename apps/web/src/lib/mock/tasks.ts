@@ -32,6 +32,7 @@ export type Task = {
   attachments?: TaskAttachment[];
   courseId: string;
   createdAt: string;
+  createdBy?: string;
   description: string;
   dueDate: string;
   id: string;
@@ -49,14 +50,17 @@ export type Task = {
 export type TaskSubmission = {
   attachments?: TaskSubmissionAttachment[];
   content: string;
+  courseId?: string;
   feedback?: string;
   id: string;
   score?: number;
   status: TaskSubmissionStatus;
   studentEmail?: string;
+  studentId?: string;
   studentName: string;
   submittedAt: string;
   taskId: string;
+  updatedAt?: string;
 };
 
 export const currentStudentSubmissionIdentity = {

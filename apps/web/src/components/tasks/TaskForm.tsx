@@ -5,15 +5,16 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ChangeEvent, type FormEvent, useCallback, useEffect, useState } from "react";
 import { AulifyDocumentEditor } from "../notes/AulifyDocumentEditor";
-import { getInitialNotesByCourseId, getNotesByCourseId, type Note } from "../../lib/repositories/noteRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { getInitialNotesByCourseId, getNotesByCourseIdAsync, type Note } from "../../lib/repositories/noteRepository";
 import {
-  createTask,
+  createTaskAsync,
   createTaskExcerptFromBlocks,
   formatTaskFileSize,
   getRenderableTaskInstructionBlocks,
   hasMeaningfulTaskInstructionBlocks,
   serializeTaskInstructionBlocks,
-  updateTask,
+  updateTaskAsync,
   type Task,
   type TaskAttachment,
   type TaskResource,
@@ -63,11 +64,29 @@ export function TaskForm({ courseId, task }: TaskFormProps) {
   const [attachments, setAttachments] = useState<TaskAttachment[]>(task?.attachments ?? []);
   const [resourceLabel, setResourceLabel] = useState("");
   const [resourceUrl, setResourceUrl] = useState("");
-  const [notes, setNotes] = useState<Note[]>(() => getInitialNotesByCourseId(courseId));
+  const [notes, setNotes] = useState<Note[]>(() => (isFirebaseDataSource() ? [] : getInitialNotesByCourseId(courseId)));
   const [errors, setErrors] = useState<TaskFormErrors>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   useEffect(() => {
-    setNotes(getNotesByCourseId(courseId));
+    let isActive = true;
+
+    void getNotesByCourseIdAsync(courseId)
+      .then((nextNotes) => {
+        if (isActive) {
+          setNotes(nextNotes);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setNotes([]);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [courseId]);
 
   const handleDocumentChange = useCallback((blocks: PartialBlock[]) => {
@@ -134,8 +153,9 @@ export function TaskForm({ courseId, task }: TaskFormProps) {
     event.target.value = "";
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitError("");
 
     if (!validate()) {
       return;
@@ -157,9 +177,18 @@ export function TaskForm({ courseId, task }: TaskFormProps) {
       summary,
       title
     };
-    const savedTask = task ? updateTask({ ...payload, createdAt: task.createdAt, id: task.id }) : createTask(payload);
+    try {
+      setIsSaving(true);
+      const savedTask = task
+        ? await updateTaskAsync({ ...payload, createdAt: task.createdAt, id: task.id })
+        : await createTaskAsync(payload);
 
-    router.push(`/teacher/courses/${courseId}/tasks/${savedTask.id}`);
+      router.push(`/teacher/courses/${courseId}/tasks/${savedTask.id}`);
+    } catch {
+      setSubmitError("No se pudo guardar. Intenta nuevamente.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -359,6 +388,12 @@ export function TaskForm({ courseId, task }: TaskFormProps) {
         ) : null}
       </section>
 
+      {submitError ? (
+        <p className="m-0 rounded-2xl border border-[#E5484D] bg-neutral-white px-4 py-3 text-sm font-semibold text-[#E5484D]">
+          {submitError}
+        </p>
+      ) : null}
+
       <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-3xl border border-neutral-lightGray bg-neutral-white/95 p-3 shadow-soft backdrop-blur sm:flex-row sm:justify-end">
         <Link
           className="inline-flex min-h-12 items-center justify-center rounded-full border border-neutral-black bg-neutral-white px-6 text-base font-bold text-neutral-black transition-colors duration-base hover:border-brand-green hover:text-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
@@ -367,10 +402,11 @@ export function TaskForm({ courseId, task }: TaskFormProps) {
           Cancelar
         </Link>
         <button
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+          disabled={isSaving}
           type="submit"
         >
-          Guardar tarea
+          {isSaving ? "Guardando..." : "Guardar tarea"}
         </button>
       </div>
     </form>

@@ -5,13 +5,14 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { TaskDetail } from "./TaskDetail";
 import { TaskSubmissionForm } from "./TaskSubmissionForm";
-import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
-import { getInitialNoteById, getNoteById, type Note } from "../../lib/repositories/noteRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { getInitialNoteById, getNoteByIdAsync, type Note } from "../../lib/repositories/noteRepository";
 import {
-  getCurrentStudentTaskSubmission,
+  getCurrentStudentTaskSubmissionAsync,
   getInitialCurrentStudentTaskSubmission,
   getInitialTaskById,
-  getTaskById,
+  getTaskByIdAsync,
   type Task,
   type TaskSubmission
 } from "../../lib/repositories/taskRepository";
@@ -22,23 +23,58 @@ type StudentTaskDetailProps = {
 };
 
 export function StudentTaskDetail({ courseId, taskId }: StudentTaskDetailProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "student"));
-  const [task, setTask] = useState<Task | undefined>(() => getInitialTaskById(courseId, taskId, { publishedOnly: true }));
+  const [course, setCourse] = useState<Course | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialCourseById(courseId, "student")));
+  const [task, setTask] = useState<Task | undefined>(() =>
+    isFirebaseDataSource() ? undefined : getInitialTaskById(courseId, taskId, { publishedOnly: true })
+  );
   const [relatedNote, setRelatedNote] = useState<Note | undefined>(() => {
+    if (isFirebaseDataSource()) {
+      return undefined;
+    }
+
     const initialTask = getInitialTaskById(courseId, taskId, { publishedOnly: true });
     return initialTask?.relatedNoteId ? getInitialNoteById(courseId, initialTask.relatedNoteId) : undefined;
   });
-  const [submission, setSubmission] = useState<TaskSubmission | undefined>(() => getInitialCurrentStudentTaskSubmission(taskId));
-  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
+  const [submission, setSubmission] = useState<TaskSubmission | undefined>(() =>
+    isFirebaseDataSource() ? undefined : getInitialCurrentStudentTaskSubmission(taskId)
+  );
+  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(!isFirebaseDataSource());
 
   useEffect(() => {
-    const nextTask = getTaskById(courseId, taskId, { publishedOnly: true });
+    let isActive = true;
 
-    setCourse(getCourseById(courseId, "student"));
-    setTask(nextTask);
-    setRelatedNote(nextTask?.relatedNoteId ? getNoteById(courseId, nextTask.relatedNoteId) : undefined);
-    setSubmission(getCurrentStudentTaskSubmission(taskId));
-    setHasLoadedStoredData(true);
+    void Promise.all([
+      getCourseByIdAsync(courseId, "student"),
+      getTaskByIdAsync(courseId, taskId, { publishedOnly: true }),
+      getCurrentStudentTaskSubmissionAsync(taskId)
+    ])
+      .then(async ([nextCourse, nextTask, nextSubmission]) => {
+        const nextRelatedNote = nextTask?.relatedNoteId ? await getNoteByIdAsync(courseId, nextTask.relatedNoteId, { publishedOnly: true }) : undefined;
+
+        if (isActive) {
+          setCourse(nextCourse);
+          setTask(nextTask);
+          setRelatedNote(nextRelatedNote);
+          setSubmission(nextSubmission);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setCourse(undefined);
+          setTask(undefined);
+          setRelatedNote(undefined);
+          setSubmission(undefined);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setHasLoadedStoredData(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [courseId, taskId]);
 
   if ((!course || !task) && !hasLoadedStoredData) {

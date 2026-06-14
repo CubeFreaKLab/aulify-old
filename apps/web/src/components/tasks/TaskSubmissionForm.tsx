@@ -2,7 +2,7 @@
 
 import { type ChangeEvent, type FormEvent, useEffect, useState } from "react";
 import { formatTaskDate, taskPdfAttachmentMaxSizeBytes, type TaskSubmission } from "../../lib/mock/tasks";
-import { formatTaskFileSize, submitTask, type StoredTaskSubmissionAttachmentInput } from "../../lib/repositories/taskRepository";
+import { formatTaskFileSize, submitTaskAsync, type StoredTaskSubmissionAttachmentInput } from "../../lib/repositories/taskRepository";
 
 type TaskSubmissionFormProps = {
   existingSubmission?: TaskSubmission;
@@ -14,6 +14,8 @@ export function TaskSubmissionForm({ existingSubmission, taskId }: TaskSubmissio
   const [content, setContent] = useState("");
   const [attachments, setAttachments] = useState<StoredTaskSubmissionAttachmentInput[]>([]);
   const [error, setError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setSubmission(existingSubmission);
@@ -38,19 +40,27 @@ export function TaskSubmissionForm({ existingSubmission, taskId }: TaskSubmissio
     event.target.value = "";
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitError("");
 
     if (!content.trim()) {
       setError("Escribe tu entrega antes de enviarla.");
       return;
     }
 
-    const nextSubmission = submitTask({ attachments: attachments.length ? attachments : undefined, content, taskId });
-    setSubmission(nextSubmission);
-    setAttachments([]);
-    setContent("");
-    setError("");
+    try {
+      setIsSubmitting(true);
+      const nextSubmission = await submitTaskAsync({ attachments: attachments.length ? attachments : undefined, content, taskId });
+      setSubmission(nextSubmission);
+      setAttachments([]);
+      setContent("");
+      setError("");
+    } catch {
+      setSubmitError("No se pudo guardar. Intenta nuevamente.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (submission) {
@@ -146,11 +156,13 @@ export function TaskSubmissionForm({ existingSubmission, taskId }: TaskSubmissio
       </div>
 
       <div className="flex justify-end">
+        {submitError ? <p className="m-0 mr-auto self-center text-sm font-semibold text-[#E5484D]">{submitError}</p> : null}
         <button
           type="submit"
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
+          disabled={isSubmitting}
         >
-          Enviar entrega
+          {isSubmitting ? "Guardando..." : "Enviar entrega"}
         </button>
       </div>
     </form>

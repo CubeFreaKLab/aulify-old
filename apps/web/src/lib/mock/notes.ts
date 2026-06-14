@@ -23,6 +23,7 @@ export type Note = {
   content?: string;
   courseId: string;
   createdAt: string;
+  createdBy?: string;
   documentBlocks?: PartialBlock[];
   future?: {
     audioRecordingUrl?: string;

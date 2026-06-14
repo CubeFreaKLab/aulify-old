@@ -16,8 +16,13 @@ import { isFirebaseDataSource } from "../../lib/config/dataSource";
 import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 import { noteStatusLabels, type Note } from "../../lib/mock/notes";
 import { formatTaskDate, taskStatusLabels, type Task, type TaskSubmission } from "../../lib/mock/tasks";
-import { getInitialNotesByCourseId, getNotesByCourseId } from "../../lib/repositories/noteRepository";
-import { getInitialTaskSubmissions, getInitialTasksByCourseId, getTaskSubmissions, getTasksByCourseId } from "../../lib/repositories/taskRepository";
+import { getInitialNotesByCourseId, getNotesByCourseIdAsync } from "../../lib/repositories/noteRepository";
+import {
+  getInitialTaskSubmissions,
+  getInitialTasksByCourseId,
+  getTaskSubmissionsAsync,
+  getTasksByCourseIdAsync
+} from "../../lib/repositories/taskRepository";
 
 type TeacherCourseDetailProps = {
   courseId: string;
@@ -36,10 +41,18 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
   useEffect(() => {
     let isActive = true;
 
-    void getCourseByIdAsync(courseId, "teacher")
-      .then((nextCourse) => {
+    void Promise.all([
+      getCourseByIdAsync(courseId, "teacher"),
+      getNotesByCourseIdAsync(courseId),
+      getTasksByCourseIdAsync(courseId),
+      getTaskSubmissionsAsync()
+    ])
+      .then(([nextCourse, nextNotes, nextTasks, nextSubmissions]) => {
         if (isActive) {
           setCourse(nextCourse);
+          setNotes(nextNotes);
+          setTasks(nextTasks);
+          setSubmissions(nextSubmissions);
           setCourseError("");
         }
       })
@@ -54,9 +67,6 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
           setHasLoadedStoredCourses(true);
         }
       });
-    setNotes(getNotesByCourseId(courseId));
-    setTasks(getTasksByCourseId(courseId));
-    setSubmissions(getTaskSubmissions());
     setActivities(getActivitiesByCourseId(courseId));
     setActivityAttempts(getActivityAttempts());
 

@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { NoteDetail } from "./NoteDetail";
-import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
-import { getInitialNoteById, getNoteById, type Note } from "../../lib/repositories/noteRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { getInitialNoteById, getNoteByIdAsync, type Note } from "../../lib/repositories/noteRepository";
 
 type StudentNoteDetailProps = {
   courseId: string;
@@ -13,14 +14,37 @@ type StudentNoteDetailProps = {
 };
 
 export function StudentNoteDetail({ courseId, noteId }: StudentNoteDetailProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "student"));
-  const [note, setNote] = useState<Note | undefined>(() => getInitialNoteById(courseId, noteId, { publishedOnly: true }));
-  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
+  const [course, setCourse] = useState<Course | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialCourseById(courseId, "student")));
+  const [note, setNote] = useState<Note | undefined>(() =>
+    isFirebaseDataSource() ? undefined : getInitialNoteById(courseId, noteId, { publishedOnly: true })
+  );
+  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(!isFirebaseDataSource());
 
   useEffect(() => {
-    setCourse(getCourseById(courseId, "student"));
-    setNote(getNoteById(courseId, noteId, { publishedOnly: true }));
-    setHasLoadedStoredData(true);
+    let isActive = true;
+
+    void Promise.all([getCourseByIdAsync(courseId, "student"), getNoteByIdAsync(courseId, noteId, { publishedOnly: true })])
+      .then(([nextCourse, nextNote]) => {
+        if (isActive) {
+          setCourse(nextCourse);
+          setNote(nextNote);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setCourse(undefined);
+          setNote(undefined);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setHasLoadedStoredData(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [courseId, noteId]);
 
   if ((!course || !note) && !hasLoadedStoredData) {

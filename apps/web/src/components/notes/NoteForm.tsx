@@ -7,12 +7,12 @@ import { type FormEvent, useCallback, useState } from "react";
 import { AulifyDocumentEditor } from "./AulifyDocumentEditor";
 import {
   createNoteExcerptFromBlocks,
-  createNote,
+  createNoteAsync,
   getRenderableDocumentBlocks,
   getRenderableNoteBlocks,
   hasMeaningfulDocumentBlocks,
   serializeDocumentBlocks,
-  updateNote,
+  updateNoteAsync,
   type Note,
   type NoteBlock,
   type NoteStatus
@@ -71,6 +71,8 @@ export function NoteForm({ courseId, note }: NoteFormProps) {
   const [documentBlocks, setDocumentBlocks] = useState<PartialBlock[]>(() => createInitialDocumentBlocks(note));
   const [status, setStatus] = useState<NoteStatus>(note?.status ?? "draft");
   const [errors, setErrors] = useState<NoteFormErrors>({ content: "", title: "" });
+  const [isSaving, setIsSaving] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const legacyBlocks = createLegacyBlocks(note);
 
   function validateForm() {
@@ -94,11 +96,12 @@ export function NoteForm({ courseId, note }: NoteFormProps) {
     [errors.content]
   );
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const nextErrors = validateForm();
     setErrors(nextErrors);
+    setSubmitError("");
 
     if (nextErrors.title || nextErrors.content) {
       return;
@@ -106,22 +109,30 @@ export function NoteForm({ courseId, note }: NoteFormProps) {
 
     const content = serializeDocumentBlocks(documentBlocks) || serializeLegacyBlocksToContent(legacyBlocks);
     const summary = createNoteExcerptFromBlocks(documentBlocks, note?.summary ?? content);
-    const savedNote = note
-      ? updateNote({
-          id: note.id,
-          createdAt: note.createdAt,
-          blocks: legacyBlocks.length ? legacyBlocks : note.blocks,
-          content,
-          courseId,
-          documentBlocks,
-          future: note.future,
-          status,
-          summary,
-          title
-        })
-      : createNote({ content, courseId, documentBlocks, status, summary, title });
 
-    router.push(`/teacher/courses/${courseId}/notes/${savedNote.id}`);
+    try {
+      setIsSaving(true);
+      const savedNote = note
+        ? await updateNoteAsync({
+            id: note.id,
+            createdAt: note.createdAt,
+            blocks: legacyBlocks.length ? legacyBlocks : note.blocks,
+            content,
+            courseId,
+            documentBlocks,
+            future: note.future,
+            status,
+            summary,
+            title
+          })
+        : await createNoteAsync({ content, courseId, documentBlocks, status, summary, title });
+
+      router.push(`/teacher/courses/${courseId}/notes/${savedNote.id}`);
+    } catch {
+      setSubmitError("No se pudo guardar. Intenta nuevamente.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -178,6 +189,12 @@ export function NoteForm({ courseId, note }: NoteFormProps) {
         {errors.content ? <span className="mt-2 block text-sm font-semibold text-[#E5484D]">{errors.content}</span> : null}
       </section>
 
+      {submitError ? (
+        <p className="m-0 rounded-2xl border border-[#E5484D] bg-neutral-white px-4 py-3 text-sm font-semibold text-[#E5484D]">
+          {submitError}
+        </p>
+      ) : null}
+
       <div className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-full border border-neutral-lightGray bg-neutral-white/95 p-2 shadow-card backdrop-blur sm:flex-row sm:justify-end">
         <Link
           href={`/teacher/courses/${courseId}`}
@@ -186,10 +203,11 @@ export function NoteForm({ courseId, note }: NoteFormProps) {
           Cancelar
         </Link>
         <button
+          disabled={isSaving}
           type="submit"
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          Guardar nota
+          {isSaving ? "Guardando..." : "Guardar nota"}
         </button>
       </div>
     </form>

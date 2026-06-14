@@ -5,13 +5,14 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { TaskDetail } from "./TaskDetail";
 import { TaskSubmissionsList } from "./TaskSubmissionsList";
-import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
-import { getInitialNoteById, getNoteById, type Note } from "../../lib/repositories/noteRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { getInitialNoteById, getNoteByIdAsync, type Note } from "../../lib/repositories/noteRepository";
 import {
   getInitialTaskById,
   getInitialTaskSubmissions,
-  getTaskById,
-  getTaskSubmissions,
+  getTaskByIdAsync,
+  getTaskSubmissionsByTaskIdAsync,
   type Task,
   type TaskSubmission
 } from "../../lib/repositories/taskRepository";
@@ -22,25 +23,52 @@ type TeacherTaskDetailProps = {
 };
 
 export function TeacherTaskDetail({ courseId, taskId }: TeacherTaskDetailProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "teacher"));
-  const [task, setTask] = useState<Task | undefined>(() => getInitialTaskById(courseId, taskId));
+  const [course, setCourse] = useState<Course | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialCourseById(courseId, "teacher")));
+  const [task, setTask] = useState<Task | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialTaskById(courseId, taskId)));
   const [relatedNote, setRelatedNote] = useState<Note | undefined>(() => {
+    if (isFirebaseDataSource()) {
+      return undefined;
+    }
+
     const initialTask = getInitialTaskById(courseId, taskId);
     return initialTask?.relatedNoteId ? getInitialNoteById(courseId, initialTask.relatedNoteId) : undefined;
   });
   const [submissions, setSubmissions] = useState<TaskSubmission[]>(() =>
-    getInitialTaskSubmissions().filter((submission) => submission.taskId === taskId)
+    isFirebaseDataSource() ? [] : getInitialTaskSubmissions().filter((submission) => submission.taskId === taskId)
   );
-  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
+  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(!isFirebaseDataSource());
 
   useEffect(() => {
-    const nextTask = getTaskById(courseId, taskId);
+    let isActive = true;
 
-    setCourse(getCourseById(courseId, "teacher"));
-    setTask(nextTask);
-    setRelatedNote(nextTask?.relatedNoteId ? getNoteById(courseId, nextTask.relatedNoteId) : undefined);
-    setSubmissions(getTaskSubmissions().filter((submission) => submission.taskId === taskId));
-    setHasLoadedStoredData(true);
+    void Promise.all([getCourseByIdAsync(courseId, "teacher"), getTaskByIdAsync(courseId, taskId), getTaskSubmissionsByTaskIdAsync(taskId)])
+      .then(async ([nextCourse, nextTask, nextSubmissions]) => {
+        const nextRelatedNote = nextTask?.relatedNoteId ? await getNoteByIdAsync(courseId, nextTask.relatedNoteId) : undefined;
+
+        if (isActive) {
+          setCourse(nextCourse);
+          setTask(nextTask);
+          setRelatedNote(nextRelatedNote);
+          setSubmissions(nextSubmissions);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setCourse(undefined);
+          setTask(undefined);
+          setRelatedNote(undefined);
+          setSubmissions([]);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setHasLoadedStoredData(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [courseId, taskId]);
 
   if ((!course || !task) && !hasLoadedStoredData) {

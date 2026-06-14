@@ -22,9 +22,14 @@ import {
   type TaskSubmission
 } from "../../lib/mock/tasks";
 import { isFirebaseDataSource } from "../../lib/config/dataSource";
-import { getInitialNotesByCourseId, getNotesByCourseId } from "../../lib/repositories/noteRepository";
+import { getInitialNotesByCourseId, getNotesByCourseIdAsync } from "../../lib/repositories/noteRepository";
 import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
-import { getInitialTaskSubmissions, getInitialTasksByCourseId, getTaskSubmissions, getTasksByCourseId } from "../../lib/repositories/taskRepository";
+import {
+  getInitialTaskSubmissions,
+  getInitialTasksByCourseId,
+  getTaskSubmissionsAsync,
+  getTasksByCourseIdAsync
+} from "../../lib/repositories/taskRepository";
 
 type StudentCourseDetailProps = {
   courseId: string;
@@ -75,10 +80,18 @@ export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
   useEffect(() => {
     let isActive = true;
 
-    void getCourseByIdAsync(courseId, "student")
-      .then((nextCourse) => {
+    void Promise.all([
+      getCourseByIdAsync(courseId, "student"),
+      getNotesByCourseIdAsync(courseId, { publishedOnly: true }),
+      getTasksByCourseIdAsync(courseId, { publishedOnly: true }),
+      getTaskSubmissionsAsync()
+    ])
+      .then(([nextCourse, nextNotes, nextTasks, nextSubmissions]) => {
         if (isActive) {
           setCourse(nextCourse);
+          setNotes(nextNotes);
+          setTasks(nextTasks);
+          setSubmissions(nextSubmissions);
           setCourseError("");
         }
       })
@@ -93,9 +106,6 @@ export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
           setHasLoadedStoredData(true);
         }
       });
-    setNotes(getNotesByCourseId(courseId, { publishedOnly: true }));
-    setTasks(getTasksByCourseId(courseId, { publishedOnly: true }));
-    setSubmissions(getTaskSubmissions());
     setActivities(getActivitiesByCourseId(courseId, { publishedOnly: true }));
     setActivityAttempts(getActivityAttempts());
 

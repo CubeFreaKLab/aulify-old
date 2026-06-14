@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { TaskForm } from "./TaskForm";
-import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
-import { getInitialTaskById, getTaskById, type Task } from "../../lib/repositories/taskRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { getInitialTaskById, getTaskByIdAsync, type Task } from "../../lib/repositories/taskRepository";
 
 type TeacherTaskEditorProps = {
   courseId: string;
@@ -13,14 +14,35 @@ type TeacherTaskEditorProps = {
 };
 
 export function TeacherTaskEditor({ courseId, taskId }: TeacherTaskEditorProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "teacher"));
-  const [task, setTask] = useState<Task | undefined>(() => getInitialTaskById(courseId, taskId));
-  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
+  const [course, setCourse] = useState<Course | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialCourseById(courseId, "teacher")));
+  const [task, setTask] = useState<Task | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialTaskById(courseId, taskId)));
+  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(!isFirebaseDataSource());
 
   useEffect(() => {
-    setCourse(getCourseById(courseId, "teacher"));
-    setTask(getTaskById(courseId, taskId));
-    setHasLoadedStoredData(true);
+    let isActive = true;
+
+    void Promise.all([getCourseByIdAsync(courseId, "teacher"), getTaskByIdAsync(courseId, taskId)])
+      .then(([nextCourse, nextTask]) => {
+        if (isActive) {
+          setCourse(nextCourse);
+          setTask(nextTask);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setCourse(undefined);
+          setTask(undefined);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setHasLoadedStoredData(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [courseId, taskId]);
 
   if ((!course || !task) && !hasLoadedStoredData) {

@@ -2,7 +2,7 @@
 
 Last updated: June 14, 2026
 
-This document explains the Firebase foundation for Aulify. The current app still uses mock/localStorage repositories by default. Firebase is not connected to login, courses, notes, tasks, attendance, activities, or progress yet.
+This document explains the Firebase foundation for Aulify. The current app still uses mock/localStorage repositories by default. Firebase-backed modules are enabled only when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
 
 ## Current State
 
@@ -11,7 +11,8 @@ This document explains the Firebase foundation for Aulify. The current app still
 - Firebase client initialization lives in `apps/web/src/lib/firebase/client.ts`.
 - Firebase auth and profile adapters support registration, login, logout, current user lookup, and auth state listening.
 - Course and course member adapters support Firestore-backed course creation, listing, detail access, and student join-by-code.
-- Notes, tasks, attendance, activities, progress, files, and live quizzes remain mock/localStorage.
+- Notes, tasks, and task submissions are Firebase-backed in firebase mode.
+- Attendance, activities, progress, files, and live quizzes remain mock/localStorage.
 - `NEXT_PUBLIC_AULIFY_DATA_SOURCE` defaults to `mock`.
 
 ## Required Firebase Products
@@ -55,7 +56,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=
 - `mock`
 - `firebase`
 
-Default should remain `mock` until Firebase adapters are implemented and the UI has async loading/error states.
+Default should remain `mock` until each Firebase-backed module has been tested with real project data and security rules.
 
 ## Local Env Example
 
@@ -82,9 +83,9 @@ The helper at `apps/web/src/lib/config/dataSource.ts` reads `NEXT_PUBLIC_AULIFY_
 Current behavior:
 
 - `mock`: the app continues using current mock/localStorage repositories.
-- `firebase`: auth, `users`, `profiles`, `courses`, and `courseMembers` use Firebase. Notes, tasks, attendance, activities, and progress still use mock/localStorage data.
+- `firebase`: auth, `users`, `profiles`, `courses`, `courseMembers`, `notes`, `tasks`, and `taskSubmissions` use Firebase. Attendance, activities, progress, files, and live quizzes still use mock/localStorage data.
 
-Do not expect notes, tasks, attendance, activities, or progress data to appear in Firestore yet. Only auth/users/profiles and course membership are Firebase-backed in this phase.
+Task attachments remain metadata-only in this phase. The app stores file name, type, size, and PDF size status, but does not upload or store real file bytes.
 
 ## Firebase Client Initialization
 
@@ -108,8 +109,11 @@ The first adapter files are:
 - `apps/web/src/lib/firebase/adapters/profileFirebaseAdapter.ts`
 - `apps/web/src/lib/firebase/adapters/courseFirebaseAdapter.ts`
 - `apps/web/src/lib/firebase/adapters/courseMemberFirebaseAdapter.ts`
+- `apps/web/src/lib/firebase/adapters/noteFirebaseAdapter.ts`
+- `apps/web/src/lib/firebase/adapters/taskFirebaseAdapter.ts`
+- `apps/web/src/lib/firebase/adapters/taskSubmissionFirebaseAdapter.ts`
 
-Auth/profile and course/course-member methods are implemented for the current migration phase.
+Auth/profile, courses/course members, notes, tasks, and task submission methods are implemented for the current migration phase.
 
 The auth UI uses the mock or Firebase path based on `NEXT_PUBLIC_AULIFY_DATA_SOURCE`.
 
@@ -121,6 +125,9 @@ The auth UI uses the mock or Firebase path based on `NEXT_PUBLIC_AULIFY_DATA_SOU
 - `profiles/{userId}`
 - `courses/{courseId}`
 - `courseMembers/{courseId}_{userId}`
+- `notes/{noteId}`
+- `tasks/{taskId}`
+- `taskSubmissions/{taskId}_{studentId}`
 
 Path conventions are documented in `docs/architecture/firebase-data-contracts.md`.
 
@@ -130,7 +137,7 @@ Path conventions are documented in `docs/architecture/firebase-data-contracts.md
 2. `users` and `profiles`.
 3. `courses`.
 4. `courseMembers`.
-5. `notes` and `tasks`.
+5. `notes`, `tasks`, and `taskSubmissions`.
 6. `attendance` and `activities`.
 7. `files` and Firebase Storage.
 8. Live quiz data.
@@ -185,7 +192,25 @@ Then restart the dev server. Mock demo credentials and localStorage behavior rem
 13. Confirm `courseMembers/{courseId}_{studentId}` exists with role `student` and status `active`.
 14. Confirm the student course list shows the course.
 
-Course child modules still use mock/localStorage. A Firestore course detail can show empty notes/tasks/activities until those domains are migrated.
+Notes and tasks created inside Firestore courses now use the same Firestore course IDs. Activities and attendance still use mock/localStorage data.
+
+## Testing Firestore Notes, Tasks, and Submissions Locally
+
+1. Set `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+2. Restart the web dev server.
+3. Log in as a Firebase teacher.
+4. Create or open a Firestore course.
+5. Create a note from the course detail.
+6. Confirm `notes/{noteId}` exists in Firestore with `courseId`, `createdBy`, `documentBlocks`, and `status`.
+7. Edit the note and confirm `documentBlocks` update.
+8. Create a task/practice from the course detail.
+9. Confirm `tasks/{taskId}` exists in Firestore with `courseId`, `createdBy`, `instructionsBlocks`, `dueDate`, and `status`.
+10. Log in as a Firebase student and join the course by code if needed.
+11. Open the published task and submit a response with optional mock attachment metadata.
+12. Confirm `taskSubmissions/{taskId}_{studentId}` exists in Firestore.
+13. Log back in as the teacher and confirm the submission appears in the task detail.
+
+Attachments are still metadata-only. Firebase Storage, upload validation, download URLs, and real file access rules are future work.
 
 ## Guardrails
 

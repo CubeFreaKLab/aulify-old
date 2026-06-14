@@ -203,7 +203,7 @@ Likely indexes:
 - `userId`, `status`
 - `courseId`, `userId`
 
-## Secondary Collections: Planning Notes
+## Secondary Collections
 
 ### `notes`
 
@@ -223,6 +223,11 @@ Query patterns:
 
 - Teacher: by `courseId`, all statuses.
 - Student: by `courseId`, `status == published`, membership required.
+
+Migration status:
+
+- Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+- Mock/localStorage remains active when the data source is `mock`.
 
 ### `tasks`
 
@@ -247,6 +252,11 @@ Query patterns:
 - Teacher: by `courseId`, all statuses.
 - Student: by `courseId`, published/closed visible based on product policy.
 
+Migration status:
+
+- Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+- Attachments are metadata only. Firebase Storage is not connected yet.
+
 ### `taskSubmissions`
 
 Suggested fields:
@@ -255,6 +265,8 @@ Suggested fields:
 - `taskId`
 - `courseId`
 - `studentId`
+- `studentName`
+- `studentEmail`
 - `content`
 - `attachments`
 - `status`: `submitted`, `reviewed`
@@ -267,6 +279,15 @@ Query patterns:
 
 - Teacher: by `taskId`.
 - Student: by `taskId` and `studentId`.
+
+Document ID strategy:
+
+- Current implementation uses deterministic ID `{taskId}_{studentId}` for one current submission per student per task.
+
+Migration status:
+
+- Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+- Submission attachments are metadata only. File bytes are not stored in Firestore.
 
 ### `attendanceSessions`
 
