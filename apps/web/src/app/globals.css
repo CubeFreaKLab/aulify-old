@@ -49,31 +49,75 @@ body {
   animation: auth-field-shake 320ms ease-out;
 }
 
+.aulify-note-title-input::selection {
+  background: #B8FAC6;
+  color: #0F0F0F;
+}
+
 .aulify-blocknote-shell,
 .aulify-blocknote-readonly {
   color: #0F0F0F;
   font-family: var(--font-inter), Inter, sans-serif;
 }
 
+.aulify-blocknote-shell .bn-root,
+.aulify-blocknote-shell .bn-root[data-color-scheme="dark"],
+.aulify-blocknote-readonly .bn-root,
+.aulify-blocknote-readonly .bn-root[data-color-scheme="dark"] {
+  --bn-colors-editor-text: #0F0F0F;
+  --bn-colors-editor-background: #FFFFFF;
+  --bn-colors-menu-text: #0F0F0F;
+  --bn-colors-menu-background: #FFFFFF;
+  --bn-colors-tooltip-text: #0F0F0F;
+  --bn-colors-tooltip-background: #ECECE7;
+  --bn-colors-hovered-text: #049A4E;
+  --bn-colors-hovered-background: #FAFAF8;
+  --bn-colors-selected-text: #FFFFFF;
+  --bn-colors-selected-background: #049A4E;
+  --bn-colors-disabled-text: #60615A;
+  --bn-colors-disabled-background: #ECECE7;
+  --bn-colors-shadow: #ECECE7;
+  --bn-colors-border: #ECECE7;
+  --bn-colors-side-menu: #60615A;
+  --bn-font-family: var(--font-inter), Inter, sans-serif;
+  --bn-border-radius: 12px;
+  --bn-shadow-medium: 0 14px 40px #ECECE7;
+  --bn-shadow-light: 0 8px 24px #ECECE7;
+}
+
 .aulify-blocknote-shell .bn-container,
-.aulify-blocknote-readonly .bn-container {
+.aulify-blocknote-readonly .bn-container,
+.aulify-blocknote-shell .bn-editor,
+.aulify-blocknote-readonly .bn-editor {
   background: #FFFFFF;
   color: #0F0F0F;
   font-family: var(--font-inter), Inter, sans-serif;
 }
 
 .aulify-blocknote-shell .bn-editor {
-  min-height: 520px;
-  padding: 28px 22px 36px;
+  border-radius: 0;
+  caret-color: #049A4E;
+  min-height: 560px;
+  padding: 8px 0 44px;
 }
 
 .aulify-blocknote-readonly .bn-editor {
+  border-radius: 0;
   padding: 24px 0 0;
 }
 
-.aulify-blocknote-shell .bn-editor,
-.aulify-blocknote-readonly .bn-editor {
-  background: #FFFFFF;
+.aulify-blocknote-shell .bn-editor *,
+.aulify-blocknote-readonly .bn-editor * {
+  scrollbar-color: #049A4E #FFFFFF;
+}
+
+.aulify-blocknote-shell ::selection,
+.aulify-blocknote-readonly ::selection,
+.aulify-blocknote-shell .bn-editor ::selection,
+.aulify-blocknote-readonly .bn-editor ::selection,
+.aulify-blocknote-shell .bn-form-popover input::selection,
+.aulify-blocknote-shell .bn-suggestion-menu input::selection {
+  background: #B8FAC6;
   color: #0F0F0F;
 }
 
@@ -82,25 +126,51 @@ body {
   color: #0F0F0F;
 }
 
+.aulify-blocknote-shell .bn-block-content,
+.aulify-blocknote-readonly .bn-block-content {
+  min-height: 30px;
+  padding-bottom: 3px;
+  padding-top: 3px;
+}
+
+.aulify-blocknote-shell .bn-block-content:has(.ProseMirror-trailingBreak:only-child)::after {
+  color: #60615A;
+  font-style: normal;
+  opacity: 0.48;
+}
+
+.aulify-blocknote-shell .bn-block-content[data-content-type="heading"] {
+  align-items: baseline;
+  line-height: 1.16;
+  padding-bottom: 3px;
+  padding-top: 6px;
+}
+
+.aulify-blocknote-shell .bn-block-content[data-content-type="heading"]:has(.ProseMirror-trailingBreak:only-child)::after {
+  color: #60615A;
+  font-style: normal;
+  opacity: 0.38;
+}
+
 .aulify-blocknote-shell .bn-editor h1,
 .aulify-blocknote-readonly .bn-editor h1 {
   color: #0F0F0F;
   font-size: 2rem;
-  line-height: 1.15;
+  line-height: 1.16;
 }
 
 .aulify-blocknote-shell .bn-editor h2,
 .aulify-blocknote-readonly .bn-editor h2 {
   color: #0F0F0F;
   font-size: 1.6rem;
-  line-height: 1.2;
+  line-height: 1.22;
 }
 
 .aulify-blocknote-shell .bn-editor h3,
 .aulify-blocknote-readonly .bn-editor h3 {
   color: #0F0F0F;
   font-size: 1.3rem;
-  line-height: 1.25;
+  line-height: 1.28;
 }
 
 .aulify-blocknote-shell .bn-editor a,
@@ -111,26 +181,199 @@ body {
 .aulify-blocknote-shell .bn-editor blockquote,
 .aulify-blocknote-readonly .bn-editor blockquote {
   border-left-color: #049A4E;
+  color: #0F0F0F;
 }
 
-.aulify-blocknote-shell .bn-side-menu {
-  color: #60615A;
+.aulify-blocknote-shell .bn-block-content.ProseMirror-selectednode > *,
+.aulify-blocknote-shell .ProseMirror-selectednode > .bn-block-content > *,
+.aulify-blocknote-readonly .bn-block-content.ProseMirror-selectednode > *,
+.aulify-blocknote-readonly .ProseMirror-selectednode > .bn-block-content > * {
+  border-radius: 8px;
+  outline: 3px solid #B8FAC6;
 }
 
-.aulify-blocknote-shell .bn-side-menu button:hover,
-.aulify-blocknote-shell .bn-toolbar button:hover,
-.aulify-blocknote-shell .bn-menu-dropdown button:hover {
+.aulify-blocknote-shell .prosemirror-dropcursor-block,
+.aulify-blocknote-shell .prosemirror-dropcursor-block-horizontal,
+.aulify-blocknote-shell .prosemirror-dropcursor-inline,
+.aulify-blocknote-shell .prosemirror-dropcursor-vertical,
+.aulify-blocknote-shell .prosemirror-dropcursor-block-vertical-left,
+.aulify-blocknote-shell .prosemirror-dropcursor-block-vertical-right,
+.aulify-blocknote-shell .bn-table-drop-cursor {
+  background-color: #049A4E !important;
+  border-color: #049A4E !important;
+  box-shadow: 0 0 0 2px #B8FAC6;
+  opacity: 1;
+}
+
+.aulify-blocknote-shell [data-show-selection],
+.aulify-blocknote-readonly [data-show-selection] {
+  background-color: #B8FAC6;
+}
+
+.aulify-blocknote-shell .bn-mantine .bn-toolbar,
+.aulify-blocknote-shell .bn-mantine .bn-menu-dropdown,
+.aulify-blocknote-shell .bn-mantine .bn-form-popover,
+.aulify-blocknote-shell .bn-mantine .bn-panel,
+.aulify-blocknote-shell .bn-mantine .bn-tooltip,
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu,
+.aulify-blocknote-shell .bn-mantine .bn-grid-suggestion-menu {
+  background: #FFFFFF;
+  border: 1px solid #ECECE7;
+  box-shadow: 0 14px 40px #ECECE7;
+  color: #0F0F0F;
+}
+
+.aulify-blocknote-shell .bn-mantine .bn-toolbar {
+  border-radius: 14px;
+  padding: 4px;
+}
+
+.aulify-blocknote-shell .bn-toolbar .mantine-Button-root,
+.aulify-blocknote-shell .bn-toolbar .mantine-ActionIcon-root,
+.aulify-blocknote-shell .bn-mantine .mantine-Menu-item,
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu-item {
+  color: #0F0F0F;
+}
+
+.aulify-blocknote-shell .bn-toolbar .mantine-Button-root:hover,
+.aulify-blocknote-shell .bn-toolbar .mantine-ActionIcon-root:hover,
+.aulify-blocknote-shell .bn-mantine .mantine-Menu-item:hover {
   background: #FAFAF8;
   color: #049A4E;
 }
 
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu-item:hover,
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu-item[aria-selected="true"],
+.aulify-blocknote-shell .bn-mantine .bn-grid-suggestion-menu-item:hover,
+.aulify-blocknote-shell .bn-mantine .bn-grid-suggestion-menu-item[aria-selected="true"] {
+  background: #FAFAF8;
+  color: #0F0F0F;
+}
+
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu-item[aria-selected="true"] {
+  box-shadow: inset 3px 0 0 #049A4E;
+}
+
+.aulify-blocknote-shell .bn-toolbar .mantine-Button-root[data-selected],
+.aulify-blocknote-shell .bn-toolbar .mantine-ActionIcon-root[data-selected] {
+  background: #049A4E;
+  color: #FFFFFF;
+}
+
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu {
+  max-height: min(420px, calc(100svh - 180px)) !important;
+  overflow-y: auto;
+  padding: 6px;
+  scrollbar-color: #049A4E #FFFFFF;
+  scrollbar-width: thin;
+}
+
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu::-webkit-scrollbar {
+  width: 10px;
+}
+
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu::-webkit-scrollbar-track {
+  background: #FFFFFF;
+}
+
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu::-webkit-scrollbar-thumb {
+  background: #049A4E;
+  border: 2px solid #FFFFFF;
+  border-radius: 999px;
+}
+
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu-label {
+  color: #60615A;
+  padding: 5px 10px;
+}
+
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu-item {
+  height: auto;
+  min-height: 42px;
+  padding: 6px 10px;
+}
+
+.aulify-blocknote-shell .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  background: #FAFAF8;
+  color: #60615A;
+  padding: 6px;
+}
+
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu-item:hover .bn-mt-suggestion-menu-item-section[data-position="left"],
+.aulify-blocknote-shell .bn-mantine .bn-suggestion-menu-item[aria-selected="true"] .bn-mt-suggestion-menu-item-section[data-position="left"] {
+  background: #FAFAF8;
+  color: #60615A;
+}
+
+.aulify-blocknote-shell .bn-mt-suggestion-menu-item-title {
+  color: #0F0F0F;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.aulify-blocknote-shell .bn-mt-suggestion-menu-item-subtitle {
+  color: #60615A;
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.aulify-blocknote-shell .bn-side-menu {
+  color: #60615A;
+  height: 28px !important;
+  opacity: 0.55;
+  transition: opacity 160ms ease, color 160ms ease;
+  transform: translateY(-2px);
+}
+
+.aulify-blocknote-shell .bn-side-menu[data-block-type="heading"][data-level],
+.aulify-blocknote-shell .bn-side-menu[data-block-type="file"],
+.aulify-blocknote-shell .bn-side-menu[data-block-type="audio"],
+.aulify-blocknote-shell .bn-side-menu[data-url="false"] {
+  height: 28px !important;
+}
+
+.aulify-blocknote-shell .bn-side-menu:hover,
+.aulify-blocknote-shell .bn-side-menu:focus-within {
+  color: #049A4E;
+  opacity: 1;
+}
+
+.aulify-blocknote-shell .bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item) {
+  background: transparent;
+  color: #60615A;
+  height: 28px;
+  width: 28px;
+  border-radius: 8px;
+}
+
+.aulify-blocknote-shell .bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item):hover {
+  background: #FAFAF8;
+  color: #049A4E;
+}
+
+.aulify-blocknote-shell .bn-side-menu .mantine-UnstyledButton-root:not(.mantine-Menu-item) svg {
+  color: currentColor;
+  height: 18px;
+  width: 18px;
+}
+
+.aulify-blocknote-shell .bn-editor [data-content-type="table"] .tableWrapper {
+  padding-bottom: 10px;
+  padding-top: 8px;
+}
+
+.aulify-blocknote-shell .bn-editor [data-content-type="table"] table {
+  margin: 0;
+}
+
 .aulify-blocknote-readonly .bn-side-menu,
-.aulify-blocknote-readonly .bn-formatting-toolbar {
+.aulify-blocknote-readonly .bn-formatting-toolbar,
+.aulify-blocknote-readonly .bn-toolbar {
   display: none;
 }
 
 @media (min-width: 640px) {
   .aulify-blocknote-shell .bn-editor {
-    padding: 34px 38px 44px;
+    padding: 12px 0 56px;
   }
 }

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { NoteDetail } from "./NoteDetail";
 import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
-import { getInitialNoteById, getNoteById, type Note } from "../../lib/repositories/noteRepository";
+import { getInitialNoteById, getNoteById, getNoteExcerpt, type Note } from "../../lib/repositories/noteRepository";
 
 type StudentNoteDetailProps = {
   courseId: string;
@@ -74,7 +74,7 @@ export function StudentNoteDetail({ courseId, noteId }: StudentNoteDetailProps) 
       activeHref="/student/notes"
       role="student"
       title={note.title}
-      subtitle={`${course.name} · ${note.summary}`}
+      subtitle={`${course.name} · ${getNoteExcerpt(note)}`}
       primaryAction={
         <Link
           href={`/student/courses/${courseId}`}

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { formatNoteDate, noteStatusLabels, type Note } from "../../lib/mock/notes";
+import { getNoteExcerpt } from "../../lib/repositories/noteRepository";
 
 type NoteCardProps = {
   actionLabel: string;
@@ -27,7 +28,7 @@ export function NoteCard({ actionLabel, courseName, href, note, showStatus = tru
           ) : null}
         </div>
         <h2 className="m-0 mt-2 text-2xl font-extrabold leading-tight text-neutral-black">{note.title}</h2>
-        <p className="m-0 mt-2 text-sm font-medium leading-6 text-neutral-darkGray">{note.summary}</p>
+        <p className="m-0 mt-2 text-sm font-medium leading-6 text-neutral-darkGray">{getNoteExcerpt(note)}</p>
       </div>
 
       <p className="m-0 text-sm font-semibold text-neutral-darkGray">Actualizado {formatNoteDate(note.updatedAt)}</p>

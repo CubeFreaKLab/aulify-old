@@ -1,12 +1,16 @@
 import { createStoredTeacherNote, readStoredTeacherNotes, saveStoredTeacherNote, type StoredNoteInput, type StoredNoteUpdateInput } from "../noteStorage";
 import {
   findNoteById,
+  createNoteExcerptFromBlocks,
   getCourseNotes,
+  getNoteExcerpt,
   getRenderableDocumentBlocks,
   getRenderableNoteBlocks,
   getPublishedNotes,
+  hasMeaningfulDocumentBlocks,
   hasMeaningfulNoteBlocks,
   mockNotes,
+  serializeDocumentBlocks,
   type Note,
   type NoteBlock,
   type NoteBlockType,
@@ -56,4 +60,12 @@ export function updateNote(input: StoredNoteUpdateInput) {
   return saveStoredTeacherNote(input);
 }
 
-export { getRenderableDocumentBlocks, getRenderableNoteBlocks, hasMeaningfulNoteBlocks };
+export {
+  createNoteExcerptFromBlocks,
+  getNoteExcerpt,
+  getRenderableDocumentBlocks,
+  getRenderableNoteBlocks,
+  hasMeaningfulDocumentBlocks,
+  hasMeaningfulNoteBlocks,
+  serializeDocumentBlocks
+};

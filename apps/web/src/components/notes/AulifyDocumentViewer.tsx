@@ -5,11 +5,11 @@ import { BlockNoteView } from "@blocknote/mantine";
 import { useCreateBlockNote } from "@blocknote/react";
 import { aulifyBlockNoteTheme } from "./aulifyBlockNoteTheme";
 
-type NoteDocumentViewerProps = {
+type AulifyDocumentViewerProps = {
   blocks: PartialBlock[];
 };
 
-export function NoteDocumentViewer({ blocks }: NoteDocumentViewerProps) {
+export function AulifyDocumentViewer({ blocks }: AulifyDocumentViewerProps) {
   const editor = useCreateBlockNote({
     defaultStyles: true,
     initialContent: blocks,

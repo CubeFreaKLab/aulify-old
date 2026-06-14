@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
-import { NoteDocumentViewer } from "./NoteDocumentViewer";
+import { AulifyDocumentViewer } from "./AulifyDocumentViewer";
 import { formatNoteDate, noteStatusLabels } from "../../lib/mock/notes";
-import { getRenderableDocumentBlocks, type Note } from "../../lib/repositories/noteRepository";
+import { getNoteExcerpt, getRenderableDocumentBlocks, type Note } from "../../lib/repositories/noteRepository";
 
 type NoteDetailProps = {
   courseName: string;
@@ -21,7 +21,7 @@ export function NoteDetail({ courseName, note, teacherActions }: NoteDetailProps
         <div>
           <p className="m-0 text-sm font-semibold text-brand-green">{courseName}</p>
           <h2 className="m-0 mt-2 text-3xl font-extrabold leading-tight text-neutral-black">{note.title}</h2>
-          <p className="m-0 mt-3 max-w-3xl text-base font-medium leading-7 text-neutral-darkGray">{note.summary}</p>
+          <p className="m-0 mt-3 max-w-3xl text-base font-medium leading-7 text-neutral-darkGray">{getNoteExcerpt(note)}</p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <span className={`rounded-full border px-3 py-1 text-xs font-bold ${statusClassName}`}>{noteStatusLabels[note.status]}</span>
@@ -31,7 +31,7 @@ export function NoteDetail({ courseName, note, teacherActions }: NoteDetailProps
 
       <div className="pt-6">
         <p className="m-0 text-sm font-semibold text-neutral-darkGray">Actualizado {formatNoteDate(note.updatedAt)}</p>
-        <NoteDocumentViewer key={`${note.id}-${note.updatedAt}`} blocks={getRenderableDocumentBlocks(note)} />
+        <AulifyDocumentViewer key={`${note.id}-${note.updatedAt}`} blocks={getRenderableDocumentBlocks(note)} />
       </div>
     </article>
   );

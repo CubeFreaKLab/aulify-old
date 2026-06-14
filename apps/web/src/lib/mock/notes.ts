@@ -65,6 +65,64 @@ function createLegacyDocumentBlocks(content?: string): PartialBlock[] {
     : [{ content: "", type: "paragraph" }];
 }
 
+function getInlineText(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (!Array.isArray(content)) {
+    return "";
+  }
+
+  return content
+    .map((item) => {
+      if (typeof item === "string") {
+        return item;
+      }
+
+      if (item && typeof item === "object" && "text" in item && typeof item.text === "string") {
+        return item.text;
+      }
+
+      return "";
+    })
+    .join("");
+}
+
+export function serializeDocumentBlocks(blocks: PartialBlock[]): string {
+  return blocks
+    .map((block) => {
+      const childText = Array.isArray(block.children) ? serializeDocumentBlocks(block.children) : "";
+      return [getInlineText(block.content), childText].filter(Boolean).join("\n");
+    })
+    .filter((value) => value.trim())
+    .join("\n\n");
+}
+
+export function hasMeaningfulDocumentBlocks(blocks: PartialBlock[]): boolean {
+  return blocks.some((block) => {
+    if (getInlineText(block.content).trim() || block.type === "divider" || block.type === "table") {
+      return true;
+    }
+
+    return Array.isArray(block.children) ? hasMeaningfulDocumentBlocks(block.children) : false;
+  });
+}
+
+export function createNoteExcerptFromBlocks(blocks: PartialBlock[], fallback = "", maxLength = 150) {
+  const text = (serializeDocumentBlocks(blocks) || fallback).replace(/\s+/g, " ").trim();
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 1).trim()}…`;
+}
+
+export function getNoteExcerpt(note: Note, maxLength = 150) {
+  return createNoteExcerptFromBlocks(getRenderableDocumentBlocks(note), note.summary || note.content || "", maxLength);
+}
+
 export function getRenderableDocumentBlocks(note: Note): PartialBlock[] {
   return note.documentBlocks?.length ? note.documentBlocks : createLegacyDocumentBlocks(note.content);
 }
