@@ -19,7 +19,7 @@ export default async function NewTeacherTaskPage({ params }: NewTeacherTaskPageP
       activeHref="/teacher/tasks"
       role="teacher"
       title="Crear tarea"
-      subtitle={`Define una tarea para ${courseName}.`}
+      subtitle={`Define una práctica para ${courseName}.`}
       primaryAction={
         <Link
           href={`/teacher/courses/${courseId}`}
@@ -29,7 +29,7 @@ export default async function NewTeacherTaskPage({ params }: NewTeacherTaskPageP
         </Link>
       }
     >
-      <div className="max-w-3xl">
+      <div className="max-w-4xl">
         <TaskForm courseId={courseId} />
       </div>
     </AppShell>

@@ -6,6 +6,7 @@ import {
   type StudentTaskState,
   type Task
 } from "../../lib/mock/tasks";
+import { getTaskSummary } from "../../lib/repositories/taskRepository";
 
 type TaskCardProps = {
   actionLabel: string;
@@ -53,7 +54,7 @@ export function TaskCard({ actionLabel, courseName, href, studentState, submissi
           <span className={`rounded-full border px-3 py-1 text-xs font-bold ${badge.className}`}>{badge.label}</span>
         </div>
         <h2 className="m-0 mt-2 text-2xl font-extrabold leading-tight text-neutral-black">{task.title}</h2>
-        <p className="m-0 mt-2 text-sm font-medium leading-6 text-neutral-darkGray">{task.description}</p>
+        <p className="m-0 mt-2 text-sm font-medium leading-6 text-neutral-darkGray">{getTaskSummary(task)}</p>
       </div>
 
       <div className="grid gap-2 text-sm font-semibold text-neutral-black">

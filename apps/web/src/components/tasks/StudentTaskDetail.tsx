@@ -91,8 +91,8 @@ export function StudentTaskDetail({ courseId, taskId }: StudentTaskDetailProps) 
     <AppShell
       activeHref="/student/tasks"
       role="student"
-      title={task.title}
-      subtitle={`${course.name} · ${task.description}`}
+      title="Tarea"
+      subtitle={course.name}
       primaryAction={
         <Link
           href={`/student/courses/${courseId}`}

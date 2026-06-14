@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { formatTaskDate, taskStatusLabels, type Task } from "../../lib/mock/tasks";
+import { formatTaskFileSize, getRenderableTaskInstructionBlocks } from "../../lib/repositories/taskRepository";
+import { AulifyDocumentViewer } from "../notes/AulifyDocumentViewer";
 
 type TaskDetailProps = {
   courseName: string;
@@ -17,13 +19,15 @@ function getStatusClassName(status: Task["status"]) {
 }
 
 export function TaskDetail({ courseName, relatedNoteTitle, task, teacherActions }: TaskDetailProps) {
+  const resources = task.resources ?? [];
+  const attachments = task.attachments ?? [];
+
   return (
     <article className="rounded-3xl border border-neutral-lightGray bg-neutral-white p-5 sm:p-7">
       <div className="flex flex-col gap-4 border-b border-neutral-lightGray pb-6 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <p className="m-0 text-sm font-semibold text-brand-green">{courseName}</p>
+          <p className="m-0 text-sm font-semibold text-brand-green">Práctica · {courseName}</p>
           <h2 className="m-0 mt-2 text-3xl font-extrabold leading-tight text-neutral-black">{task.title}</h2>
-          <p className="m-0 mt-3 max-w-3xl text-base font-medium leading-7 text-neutral-darkGray">{task.description}</p>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <span className={`rounded-full border px-3 py-1 text-xs font-bold ${getStatusClassName(task.status)}`}>
@@ -51,8 +55,45 @@ export function TaskDetail({ courseName, relatedNoteTitle, task, teacherActions 
 
         <div>
           <h3 className="m-0 text-xl font-extrabold text-neutral-black">Instrucciones</h3>
-          <div className="mt-3 max-w-4xl whitespace-pre-line text-base font-medium leading-8 text-neutral-black">{task.instructions}</div>
+          <div className="mt-3">
+            <AulifyDocumentViewer blocks={getRenderableTaskInstructionBlocks(task)} />
+          </div>
         </div>
+
+        {resources.length ? (
+          <div>
+            <h3 className="m-0 text-xl font-extrabold text-neutral-black">Recursos</h3>
+            <div className="mt-3 grid gap-2">
+              {resources.map((resource) => (
+                <a
+                  className="rounded-2xl bg-neutral-offWhite px-4 py-3 text-sm font-bold text-brand-green transition-colors duration-base hover:text-neutral-black focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+                  href={resource.url}
+                  key={resource.id}
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  {resource.label}
+                </a>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {attachments.length ? (
+          <div>
+            <h3 className="m-0 text-xl font-extrabold text-neutral-black">Adjuntos de referencia</h3>
+            <div className="mt-3 grid gap-2">
+              {attachments.map((attachment) => (
+                <div className="rounded-2xl bg-neutral-offWhite px-4 py-3" key={attachment.id}>
+                  <p className="m-0 text-sm font-bold text-neutral-black">{attachment.name}</p>
+                  <p className="m-0 mt-1 text-xs font-medium text-neutral-darkGray">
+                    {attachment.type || "Archivo"} · {formatTaskFileSize(attachment.size)}
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
     </article>
   );

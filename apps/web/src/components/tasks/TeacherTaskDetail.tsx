@@ -93,8 +93,8 @@ export function TeacherTaskDetail({ courseId, taskId }: TeacherTaskDetailProps) 
     <AppShell
       activeHref="/teacher/tasks"
       role="teacher"
-      title={task.title}
-      subtitle={`${course.name} · ${task.description}`}
+      title="Tarea"
+      subtitle={course.name}
       primaryAction={
         <Link
           href={`/teacher/courses/${courseId}`}
@@ -110,12 +110,12 @@ export function TeacherTaskDetail({ courseId, taskId }: TeacherTaskDetailProps) 
         task={task}
         teacherActions={
           <>
-            <button
-              type="button"
+            <Link
+              href={`/teacher/courses/${courseId}/tasks/${task.id}/edit`}
               className="inline-flex min-h-10 items-center justify-center rounded-full border border-neutral-lightGray bg-neutral-white px-4 text-sm font-bold text-neutral-black transition-colors duration-base hover:border-brand-green hover:text-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
             >
-              Editar
-            </button>
+              Editar práctica
+            </Link>
             <button
               type="button"
               className="inline-flex min-h-10 items-center justify-center rounded-full bg-brand-green px-4 text-sm font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"

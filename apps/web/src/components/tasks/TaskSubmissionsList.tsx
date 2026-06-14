@@ -1,4 +1,5 @@
 import { formatTaskDate, submissionStatusLabels, type TaskSubmission } from "../../lib/mock/tasks";
+import { formatTaskFileSize } from "../../lib/repositories/taskRepository";
 
 type TaskSubmissionsListProps = {
   submissions: TaskSubmission[];
@@ -31,6 +32,21 @@ export function TaskSubmissionsList({ submissions }: TaskSubmissionsListProps) {
                 </span>
               </div>
               <p className="m-0 mt-3 text-sm font-medium leading-6 text-neutral-black">{submission.content}</p>
+              {submission.attachments?.length ? (
+                <div className="mt-3 grid gap-2">
+                  {submission.attachments.map((attachment) => (
+                    <div className="rounded-xl bg-neutral-white px-3 py-2" key={attachment.id}>
+                      <p className="m-0 text-xs font-bold text-neutral-black">{attachment.name}</p>
+                      <p className="m-0 mt-1 text-xs font-medium text-neutral-darkGray">
+                        {attachment.type || "Archivo"} · {formatTaskFileSize(attachment.size)}
+                        {attachment.isPdf
+                          ? ` · ${attachment.withinAllowedSize ? "PDF dentro del límite" : "PDF supera el límite sugerido"}`
+                          : null}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
               {submission.score ? <p className="m-0 mt-2 text-sm font-bold text-brand-green">Puntaje: {submission.score}</p> : null}
               {submission.feedback ? <p className="m-0 mt-1 text-sm font-medium text-neutral-darkGray">{submission.feedback}</p> : null}
             </article>

@@ -1,22 +1,53 @@
+import type { PartialBlock } from "@blocknote/core";
+
 export type TaskStatus = "draft" | "published" | "closed";
 export type TaskSubmissionStatus = "submitted" | "reviewed";
 export type StudentTaskState = "pending" | "submitted" | "overdue";
 
+export type TaskResource = {
+  id: string;
+  label: string;
+  url: string;
+};
+
+export type TaskAttachment = {
+  createdAt: string;
+  id: string;
+  name: string;
+  size: number;
+  type: string;
+};
+
+export type TaskSubmissionAttachment = {
+  id: string;
+  isPdf: boolean;
+  name: string;
+  size: number;
+  submittedAt: string;
+  type: string;
+  withinAllowedSize: boolean;
+};
+
 export type Task = {
+  attachments?: TaskAttachment[];
   courseId: string;
   createdAt: string;
   description: string;
   dueDate: string;
   id: string;
   instructions: string;
+  instructionsBlocks?: PartialBlock[];
   points: number;
   relatedNoteId?: string;
+  resources?: TaskResource[];
   status: TaskStatus;
+  summary?: string;
   title: string;
   updatedAt: string;
 };
 
 export type TaskSubmission = {
+  attachments?: TaskSubmissionAttachment[];
   content: string;
   feedback?: string;
   id: string;
@@ -29,9 +60,11 @@ export type TaskSubmission = {
 };
 
 export const currentStudentSubmissionIdentity = {
-  email: "estudiante@aulify.local",
-  name: "Estudiante Aulify"
+  email: "estudiante@aulify.test",
+  name: "Estudiante Demo"
 };
+
+export const taskPdfAttachmentMaxSizeBytes = 10 * 1024 * 1024;
 
 export const taskStatusLabels: Record<TaskStatus, string> = {
   draft: "Borrador",
@@ -171,4 +204,89 @@ export function formatTaskDate(value: string) {
     month: "short",
     year: "numeric"
   }).format(new Date(`${value}T12:00:00`));
+}
+
+function createLegacyDocumentBlocks(content?: string): PartialBlock[] {
+  const paragraphs = (content ?? "")
+    .split(/\n{2,}/)
+    .map((text) => text.trim())
+    .filter(Boolean);
+
+  return paragraphs.length
+    ? paragraphs.map((text) => ({ content: text, type: "paragraph" }))
+    : [{ content: "", type: "paragraph" }];
+}
+
+function getInlineText(content: unknown): string {
+  if (typeof content === "string") {
+    return content;
+  }
+
+  if (!Array.isArray(content)) {
+    return "";
+  }
+
+  return content
+    .map((item) => {
+      if (typeof item === "string") {
+        return item;
+      }
+
+      if (item && typeof item === "object" && "text" in item && typeof item.text === "string") {
+        return item.text;
+      }
+
+      return "";
+    })
+    .join("");
+}
+
+export function serializeTaskInstructionBlocks(blocks: PartialBlock[]): string {
+  return blocks
+    .map((block) => {
+      const childText = Array.isArray(block.children) ? serializeTaskInstructionBlocks(block.children) : "";
+      return [getInlineText(block.content), childText].filter(Boolean).join("\n");
+    })
+    .filter((value) => value.trim())
+    .join("\n\n");
+}
+
+export function hasMeaningfulTaskInstructionBlocks(blocks: PartialBlock[]): boolean {
+  return blocks.some((block) => {
+    if (getInlineText(block.content).trim() || block.type === "divider" || block.type === "table") {
+      return true;
+    }
+
+    return Array.isArray(block.children) ? hasMeaningfulTaskInstructionBlocks(block.children) : false;
+  });
+}
+
+export function createTaskExcerptFromBlocks(blocks: PartialBlock[], fallback = "", maxLength = 150) {
+  const text = (serializeTaskInstructionBlocks(blocks) || fallback).replace(/\s+/g, " ").trim();
+
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 1).trim()}…`;
+}
+
+export function getTaskSummary(task: Task, maxLength = 150) {
+  return createTaskExcerptFromBlocks(getRenderableTaskInstructionBlocks(task), task.summary || task.description || task.instructions, maxLength);
+}
+
+export function getRenderableTaskInstructionBlocks(task: Task): PartialBlock[] {
+  return task.instructionsBlocks?.length ? task.instructionsBlocks : createLegacyDocumentBlocks(task.instructions || task.description);
+}
+
+export function formatTaskFileSize(size: number) {
+  if (size >= 1024 * 1024) {
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  if (size >= 1024) {
+    return `${Math.round(size / 1024)} KB`;
+  }
+
+  return `${size} B`;
 }
