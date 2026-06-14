@@ -7,7 +7,12 @@ import { AuthDivider } from "../../../components/auth/AuthDivider";
 import { AuthInput } from "../../../components/auth/AuthInput";
 import { AuthSplitLayout } from "../../../components/auth/AuthSplitLayout";
 import { SocialLoginButton } from "../../../components/auth/SocialLoginButton";
-import { getCurrentSession, getDashboardPathForSession, loginWithMockCredentials } from "../../../lib/repositories/authRepository";
+import {
+  getAuthErrorMessage,
+  getCurrentSessionAsync,
+  getDashboardPathForSession,
+  loginWithCredentials
+} from "../../../lib/repositories/authRepository";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -16,14 +21,27 @@ export default function LoginPage() {
   const [errors, setErrors] = useState({ auth: "", email: "", password: "" });
   const [touched, setTouched] = useState({ email: false, password: false });
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [shakeKeys, setShakeKeys] = useState({ email: 0, password: 0 });
 
   useEffect(() => {
-    const session = getCurrentSession();
+    let isActive = true;
 
-    if (session) {
-      router.replace(getDashboardPathForSession(session));
-    }
+    void getCurrentSessionAsync()
+      .then((session) => {
+        if (isActive && session) {
+          router.replace(getDashboardPathForSession(session));
+        }
+      })
+      .catch((error: unknown) => {
+        if (isActive) {
+          setErrors((currentErrors) => ({ ...currentErrors, auth: getAuthErrorMessage(error) }));
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [router]);
 
   function validateEmail(value: string) {
@@ -88,9 +106,10 @@ export default function LoginPage() {
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setHasSubmitted(true);
+    setIsSubmitting(true);
 
     const nextErrors = {
       auth: "",
@@ -106,21 +125,32 @@ export default function LoginPage() {
     }));
 
     if (nextErrors.email || nextErrors.password) {
+      setIsSubmitting(false);
       return;
     }
 
-    const session = loginWithMockCredentials(email, password);
+    try {
+      const session = await loginWithCredentials(email, password);
 
-    if (!session) {
-      setErrors((currentErrors) => ({ ...currentErrors, auth: "Correo o contraseña incorrectos." }));
+      if (!session) {
+        setErrors((currentErrors) => ({ ...currentErrors, auth: "Correo o contraseña incorrectos." }));
+        setShakeKeys((currentKeys) => ({
+          email: currentKeys.email + 1,
+          password: currentKeys.password + 1
+        }));
+        setIsSubmitting(false);
+        return;
+      }
+
+      router.push(getDashboardPathForSession(session));
+    } catch (error) {
+      setErrors((currentErrors) => ({ ...currentErrors, auth: getAuthErrorMessage(error) }));
       setShakeKeys((currentKeys) => ({
         email: currentKeys.email + 1,
         password: currentKeys.password + 1
       }));
-      return;
+      setIsSubmitting(false);
     }
-
-    router.push(getDashboardPathForSession(session));
   }
 
   return (
@@ -176,9 +206,10 @@ export default function LoginPage() {
 
           <button
             type="submit"
+            disabled={isSubmitting}
             className="mt-6 h-[78px] w-full rounded-full bg-brand-green px-8 text-[24px] font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
           >
-            Iniciar sesión
+            {isSubmitting ? "Iniciando..." : "Iniciar sesión"}
           </button>
 
           <div className="my-5">

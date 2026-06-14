@@ -9,8 +9,9 @@ This document explains the Firebase foundation for Aulify. The current app still
 - Firebase client SDK is installed in `apps/web`.
 - Public Firebase environment variables are documented in `.env.example` and `apps/web/.env.example`.
 - Firebase client initialization lives in `apps/web/src/lib/firebase/client.ts`.
-- Firebase adapter scaffolds exist for auth, profiles, courses, and course members.
-- Current UI repositories remain mock/localStorage.
+- Firebase auth and profile adapters support registration, login, logout, current user lookup, and auth state listening.
+- Course and course member adapters are scaffolded but not implemented yet.
+- Current course/content repositories remain mock/localStorage.
 - `NEXT_PUBLIC_AULIFY_DATA_SOURCE` defaults to `mock`.
 
 ## Required Firebase Products
@@ -81,9 +82,9 @@ The helper at `apps/web/src/lib/config/dataSource.ts` reads `NEXT_PUBLIC_AULIFY_
 Current behavior:
 
 - `mock`: the app continues using current mock/localStorage repositories.
-- `firebase`: reserved for future adapter wiring.
+- `firebase`: auth, `users`, and `profiles` use Firebase. Courses, notes, tasks, attendance, activities, and progress still use mock/localStorage data.
 
-Do not switch production or demo environments to `firebase` until the relevant adapters are implemented.
+Do not expect course data to appear in Firestore yet. Only auth/users/profiles are Firebase-backed in this phase.
 
 ## Firebase Client Initialization
 
@@ -101,16 +102,16 @@ If the data source is `firebase` and env values are incomplete, initialization t
 
 ## Adapter Scaffolds
 
-The first adapter scaffolds are:
+The first adapter files are:
 
 - `apps/web/src/lib/firebase/adapters/authFirebaseAdapter.ts`
 - `apps/web/src/lib/firebase/adapters/profileFirebaseAdapter.ts`
 - `apps/web/src/lib/firebase/adapters/courseFirebaseAdapter.ts`
 - `apps/web/src/lib/firebase/adapters/courseMemberFirebaseAdapter.ts`
 
-They import async repository contracts from `@aulify/shared-types`, but their methods intentionally throw `Firebase adapter method not implemented yet`.
+Auth/profile methods are implemented for the first migration phase. Course and course member methods still intentionally throw `Firebase adapter method not implemented yet`.
 
-These adapters are not wired into the UI yet.
+The auth UI uses the mock or Firebase path based on `NEXT_PUBLIC_AULIFY_DATA_SOURCE`.
 
 ## Firestore Path Helpers
 
@@ -133,6 +134,39 @@ Path conventions are documented in `docs/architecture/firebase-data-contracts.md
 6. `attendance` and `activities`.
 7. `files` and Firebase Storage.
 8. Live quiz data.
+
+## Testing Firebase Auth Locally
+
+1. Add Firebase public values to `apps/web/.env.local`.
+2. Set the data source to Firebase:
+
+```bash
+NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase
+```
+
+3. Restart the web dev server:
+
+```bash
+pnpm --filter @aulify/web dev
+```
+
+4. Open `/auth/register`.
+5. Register a teacher account.
+6. Confirm the user appears in Firebase Authentication.
+7. Confirm `users/{uid}` exists in Firestore.
+8. Confirm `profiles/{uid}` exists in Firestore.
+9. Log out.
+10. Log in with the teacher account and confirm redirect to `/teacher/dashboard`.
+11. Register a student account.
+12. Log in with the student account and confirm redirect to `/student/dashboard`.
+
+To return to the demo flow, switch back to:
+
+```bash
+NEXT_PUBLIC_AULIFY_DATA_SOURCE=mock
+```
+
+Then restart the dev server. Mock demo credentials and localStorage behavior remain available only in mock mode.
 
 ## Guardrails
 

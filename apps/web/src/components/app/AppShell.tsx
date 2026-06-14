@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { AppSidebar } from "./AppSidebar";
 import { AppTopbar } from "./AppTopbar";
 import { type AppRole, getAppNavigation } from "./appNavigation";
-import { clearCurrentSession, getDashboardPathForSession, type MockSession } from "../../lib/repositories/authRepository";
+import { clearCurrentSessionAsync, getDashboardPathForSession } from "../../lib/repositories/authRepository";
 import { useMockSession } from "../../lib/useMockSession";
 
 type AppShellProps = {
@@ -38,8 +38,8 @@ export function AppShell({ activeHref, children, primaryAction, role, subtitle, 
     }
   }, [hasLoadedSession, role, router, session]);
 
-  function handleLogout() {
-    clearCurrentSession();
+  async function handleLogout() {
+    await clearCurrentSessionAsync();
     router.replace("/auth/login");
   }
 
@@ -56,7 +56,7 @@ export function AppShell({ activeHref, children, primaryAction, role, subtitle, 
 
   return (
     <div className="min-h-screen bg-neutral-offWhite text-neutral-black lg:grid lg:grid-cols-[280px_1fr]">
-      <AppSidebar activeHref={activeHref} items={navigation} role={role} session={session as MockSession} />
+      <AppSidebar activeHref={activeHref} items={navigation} role={role} session={session} />
       <div className="min-w-0">
         <AppTopbar
           activeHref={activeHref}

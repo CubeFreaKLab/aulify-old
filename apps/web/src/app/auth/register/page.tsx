@@ -8,7 +8,12 @@ import { AuthInput } from "../../../components/auth/AuthInput";
 import { AuthRoleSelector, type AuthRole } from "../../../components/auth/AuthRoleSelector";
 import { AuthSplitLayout } from "../../../components/auth/AuthSplitLayout";
 import { SocialLoginButton } from "../../../components/auth/SocialLoginButton";
-import { getCurrentSession, getDashboardPathForSession, registerMockUser } from "../../../lib/repositories/authRepository";
+import {
+  getAuthErrorMessage,
+  getCurrentSessionAsync,
+  getDashboardPathForSession,
+  registerUser
+} from "../../../lib/repositories/authRepository";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -18,6 +23,7 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [role, setRole] = useState<AuthRole>("teacher");
   const [errors, setErrors] = useState({
+    auth: "",
     fullName: "",
     email: "",
     password: "",
@@ -30,6 +36,7 @@ export default function RegisterPage() {
     confirmPassword: false
   });
   const [hasSubmitted, setHasSubmitted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [shakeKeys, setShakeKeys] = useState({
     fullName: 0,
     email: 0,
@@ -38,11 +45,23 @@ export default function RegisterPage() {
   });
 
   useEffect(() => {
-    const session = getCurrentSession();
+    let isActive = true;
 
-    if (session) {
-      router.replace(getDashboardPathForSession(session));
-    }
+    void getCurrentSessionAsync()
+      .then((session) => {
+        if (isActive && session) {
+          router.replace(getDashboardPathForSession(session));
+        }
+      })
+      .catch((error: unknown) => {
+        if (isActive) {
+          setErrors((currentErrors) => ({ ...currentErrors, auth: getAuthErrorMessage(error) }));
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [router]);
 
   function validateFullName(value: string) {
@@ -88,6 +107,7 @@ export default function RegisterPage() {
     }
 
     if (hasSubmitted || touched[field]) {
+      setErrors((currentErrors) => ({ ...currentErrors, auth: "" }));
       setErrors((currentErrors) => {
         const nextErrors = { ...currentErrors };
 
@@ -125,13 +145,14 @@ export default function RegisterPage() {
     }
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setHasSubmitted(true);
+    setIsSubmitting(true);
 
     const nextErrors = validateForm();
 
-    setErrors(nextErrors);
+    setErrors({ auth: "", ...nextErrors });
     setTouched({
       fullName: true,
       email: true,
@@ -146,17 +167,29 @@ export default function RegisterPage() {
     }));
 
     if (nextErrors.fullName || nextErrors.email || nextErrors.password || nextErrors.confirmPassword) {
+      setIsSubmitting(false);
       return;
     }
 
-    const session = registerMockUser({
-      email,
-      name: fullName,
-      password,
-      role
-    });
+    try {
+      const session = await registerUser({
+        email,
+        name: fullName,
+        password,
+        role
+      });
 
-    router.push(getDashboardPathForSession(session));
+      if (session) {
+        router.push(getDashboardPathForSession(session));
+      }
+    } catch (error) {
+      setErrors((currentErrors) => ({ ...currentErrors, auth: getAuthErrorMessage(error) }));
+      setShakeKeys((currentKeys) => ({
+        ...currentKeys,
+        email: currentKeys.email + 1
+      }));
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -224,11 +257,18 @@ export default function RegisterPage() {
 
           <AuthRoleSelector value={role} onChange={setRole} />
 
+          {errors.auth ? (
+            <p className="m-0 rounded-3xl border border-[#E5484D] bg-neutral-white px-5 py-4 text-[16px] font-semibold text-[#E5484D]">
+              {errors.auth}
+            </p>
+          ) : null}
+
           <button
             type="submit"
+            disabled={isSubmitting}
             className="mt-4 h-[78px] w-full rounded-full bg-brand-green px-8 text-[24px] font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
           >
-            Crear cuenta
+            {isSubmitting ? "Creando cuenta..." : "Crear cuenta"}
           </button>
 
           <div className="my-4">
