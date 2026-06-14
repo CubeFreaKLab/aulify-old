@@ -12,7 +12,8 @@ import {
   type ActivityAttempt
 } from "../../lib/mock/activities";
 import { getActivityAttempts, getActivitiesByCourseId, getInitialActivitiesByCourseId, getInitialActivityAttempts } from "../../lib/repositories/activityRepository";
-import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 import { noteStatusLabels, type Note } from "../../lib/mock/notes";
 import { formatTaskDate, taskStatusLabels, type Task, type TaskSubmission } from "../../lib/mock/tasks";
 import { getInitialNotesByCourseId, getNotesByCourseId } from "../../lib/repositories/noteRepository";
@@ -23,22 +24,45 @@ type TeacherCourseDetailProps = {
 };
 
 export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "teacher"));
+  const [course, setCourse] = useState<Course | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialCourseById(courseId, "teacher")));
   const [notes, setNotes] = useState<Note[]>(() => getInitialNotesByCourseId(courseId));
   const [tasks, setTasks] = useState<Task[]>(() => getInitialTasksByCourseId(courseId));
   const [submissions, setSubmissions] = useState<TaskSubmission[]>(getInitialTaskSubmissions);
   const [activities, setActivities] = useState<Activity[]>(() => getInitialActivitiesByCourseId(courseId));
   const [activityAttempts, setActivityAttempts] = useState<ActivityAttempt[]>(getInitialActivityAttempts);
-  const [hasLoadedStoredCourses, setHasLoadedStoredCourses] = useState(false);
+  const [hasLoadedStoredCourses, setHasLoadedStoredCourses] = useState(!isFirebaseDataSource());
+  const [courseError, setCourseError] = useState("");
 
   useEffect(() => {
-    setCourse(getCourseById(courseId, "teacher"));
+    let isActive = true;
+
+    void getCourseByIdAsync(courseId, "teacher")
+      .then((nextCourse) => {
+        if (isActive) {
+          setCourse(nextCourse);
+          setCourseError("");
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setCourse(undefined);
+          setCourseError("No pudimos cargar este curso.");
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setHasLoadedStoredCourses(true);
+        }
+      });
     setNotes(getNotesByCourseId(courseId));
     setTasks(getTasksByCourseId(courseId));
     setSubmissions(getTaskSubmissions());
     setActivities(getActivitiesByCourseId(courseId));
     setActivityAttempts(getActivityAttempts());
-    setHasLoadedStoredCourses(true);
+
+    return () => {
+      isActive = false;
+    };
   }, [courseId]);
 
   if (!course && !hasLoadedStoredCourses) {
@@ -69,8 +93,8 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
       <AppShell
         activeHref="/teacher/courses"
         role="teacher"
-        title="Curso no encontrado"
-        subtitle="No pudimos encontrar el curso solicitado."
+        title={courseError ? "Error al cargar curso" : "Curso no encontrado"}
+        subtitle={courseError || "No pudimos encontrar el curso solicitado."}
         primaryAction={
           <Link
             href="/teacher/courses"
@@ -110,6 +134,11 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
       </section>
 
       <section className="mt-8 flex flex-wrap gap-3">
+        {course.joinCode ? (
+          <div className="inline-flex min-h-11 items-center justify-center rounded-full border border-neutral-lightGray bg-neutral-white px-5 text-sm font-bold text-neutral-black">
+            Código: <span className="ml-2 text-brand-green">{course.joinCode}</span>
+          </div>
+        ) : null}
         <Link
           href={`/teacher/courses/${courseId}/notes/new`}
           className="inline-flex min-h-11 items-center justify-center rounded-full bg-brand-green px-5 text-sm font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"

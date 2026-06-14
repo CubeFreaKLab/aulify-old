@@ -6,6 +6,7 @@ export type Course = AuditFields & {
   coverImageUrl?: string;
   description: string;
   id: CourseId;
+  joinCode?: string;
   status: CourseStatus;
   subject: string;
   teacherId: UserId;
@@ -15,10 +16,11 @@ export type Course = AuditFields & {
 export type CreateCoursePayload = {
   coverImageUrl?: string;
   description: string;
+  joinCode?: string;
   status?: CourseStatus;
   subject: string;
   teacherId: UserId;
   title: string;
 };
 
-export type UpdateCoursePayload = Partial<Pick<Course, "coverImageUrl" | "description" | "status" | "subject" | "title">>;
+export type UpdateCoursePayload = Partial<Pick<Course, "coverImageUrl" | "description" | "joinCode" | "status" | "subject" | "title">>;

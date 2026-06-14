@@ -20,6 +20,7 @@ export type Course = {
   groupLabel: string;
   groupsCount: number;
   id: string;
+  joinCode?: string;
   name: string;
   pendingActivitiesCount: number;
   pendingTasksCount: number;

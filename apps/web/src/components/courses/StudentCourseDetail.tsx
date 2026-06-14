@@ -13,7 +13,6 @@ import {
   type ActivityAttempt
 } from "../../lib/mock/activities";
 import { getActivityAttempts, getActivitiesByCourseId, getInitialActivitiesByCourseId, getInitialActivityAttempts } from "../../lib/repositories/activityRepository";
-import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 import type { Note } from "../../lib/mock/notes";
 import {
   formatTaskDate,
@@ -22,7 +21,9 @@ import {
   type Task,
   type TaskSubmission
 } from "../../lib/mock/tasks";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
 import { getInitialNotesByCourseId, getNotesByCourseId } from "../../lib/repositories/noteRepository";
+import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 import { getInitialTaskSubmissions, getInitialTasksByCourseId, getTaskSubmissions, getTasksByCourseId } from "../../lib/repositories/taskRepository";
 
 type StudentCourseDetailProps = {
@@ -62,22 +63,45 @@ function createActivityPreviewItems(courseId: string, activities: Activity[], at
 }
 
 export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
-  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "student"));
+  const [course, setCourse] = useState<Course | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialCourseById(courseId, "student")));
   const [notes, setNotes] = useState<Note[]>(() => getInitialNotesByCourseId(courseId, { publishedOnly: true }));
   const [tasks, setTasks] = useState<Task[]>(() => getInitialTasksByCourseId(courseId, { publishedOnly: true }));
   const [submissions, setSubmissions] = useState<TaskSubmission[]>(getInitialTaskSubmissions);
   const [activities, setActivities] = useState<Activity[]>(() => getInitialActivitiesByCourseId(courseId, { publishedOnly: true }));
   const [activityAttempts, setActivityAttempts] = useState<ActivityAttempt[]>(getInitialActivityAttempts);
-  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
+  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(!isFirebaseDataSource());
+  const [courseError, setCourseError] = useState("");
 
   useEffect(() => {
-    setCourse(getCourseById(courseId, "student"));
+    let isActive = true;
+
+    void getCourseByIdAsync(courseId, "student")
+      .then((nextCourse) => {
+        if (isActive) {
+          setCourse(nextCourse);
+          setCourseError("");
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setCourse(undefined);
+          setCourseError("No pudimos cargar este curso.");
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setHasLoadedStoredData(true);
+        }
+      });
     setNotes(getNotesByCourseId(courseId, { publishedOnly: true }));
     setTasks(getTasksByCourseId(courseId, { publishedOnly: true }));
     setSubmissions(getTaskSubmissions());
     setActivities(getActivitiesByCourseId(courseId, { publishedOnly: true }));
     setActivityAttempts(getActivityAttempts());
-    setHasLoadedStoredData(true);
+
+    return () => {
+      isActive = false;
+    };
   }, [courseId]);
 
   if (!course && !hasLoadedStoredData) {
@@ -108,8 +132,8 @@ export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
       <AppShell
         activeHref="/student/courses"
         role="student"
-        title="Curso no encontrado"
-        subtitle="No pudimos encontrar el curso solicitado."
+        title={courseError ? "Error al cargar curso" : "Curso no encontrado"}
+        subtitle={courseError || "No pudimos encontrar el curso solicitado."}
         primaryAction={
           <Link
             href="/student/courses"

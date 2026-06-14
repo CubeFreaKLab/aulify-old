@@ -10,8 +10,8 @@ This document explains the Firebase foundation for Aulify. The current app still
 - Public Firebase environment variables are documented in `.env.example` and `apps/web/.env.example`.
 - Firebase client initialization lives in `apps/web/src/lib/firebase/client.ts`.
 - Firebase auth and profile adapters support registration, login, logout, current user lookup, and auth state listening.
-- Course and course member adapters are scaffolded but not implemented yet.
-- Current course/content repositories remain mock/localStorage.
+- Course and course member adapters support Firestore-backed course creation, listing, detail access, and student join-by-code.
+- Notes, tasks, attendance, activities, progress, files, and live quizzes remain mock/localStorage.
 - `NEXT_PUBLIC_AULIFY_DATA_SOURCE` defaults to `mock`.
 
 ## Required Firebase Products
@@ -82,9 +82,9 @@ The helper at `apps/web/src/lib/config/dataSource.ts` reads `NEXT_PUBLIC_AULIFY_
 Current behavior:
 
 - `mock`: the app continues using current mock/localStorage repositories.
-- `firebase`: auth, `users`, and `profiles` use Firebase. Courses, notes, tasks, attendance, activities, and progress still use mock/localStorage data.
+- `firebase`: auth, `users`, `profiles`, `courses`, and `courseMembers` use Firebase. Notes, tasks, attendance, activities, and progress still use mock/localStorage data.
 
-Do not expect course data to appear in Firestore yet. Only auth/users/profiles are Firebase-backed in this phase.
+Do not expect notes, tasks, attendance, activities, or progress data to appear in Firestore yet. Only auth/users/profiles and course membership are Firebase-backed in this phase.
 
 ## Firebase Client Initialization
 
@@ -109,7 +109,7 @@ The first adapter files are:
 - `apps/web/src/lib/firebase/adapters/courseFirebaseAdapter.ts`
 - `apps/web/src/lib/firebase/adapters/courseMemberFirebaseAdapter.ts`
 
-Auth/profile methods are implemented for the first migration phase. Course and course member methods still intentionally throw `Firebase adapter method not implemented yet`.
+Auth/profile and course/course-member methods are implemented for the current migration phase.
 
 The auth UI uses the mock or Firebase path based on `NEXT_PUBLIC_AULIFY_DATA_SOURCE`.
 
@@ -168,6 +168,25 @@ NEXT_PUBLIC_AULIFY_DATA_SOURCE=mock
 
 Then restart the dev server. Mock demo credentials and localStorage behavior remain available only in mock mode.
 
+## Testing Firestore Courses Locally
+
+1. Set `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+2. Restart the web dev server.
+3. Log in as a Firebase teacher.
+4. Open `/teacher/courses/new`.
+5. Create a course.
+6. Confirm `courses/{courseId}` exists in Firestore.
+7. Confirm `courseMembers/{courseId}_{teacherId}` exists with role `teacher` and status `active`.
+8. Confirm the teacher course list shows the Firestore course.
+9. Open the teacher course detail and copy the join code.
+10. Log in as a Firebase student.
+11. Open `/student/courses`.
+12. Use the join code in the `Unirse a curso por código` form.
+13. Confirm `courseMembers/{courseId}_{studentId}` exists with role `student` and status `active`.
+14. Confirm the student course list shows the course.
+
+Course child modules still use mock/localStorage. A Firestore course detail can show empty notes/tasks/activities until those domains are migrated.
+
 ## Guardrails
 
 - Do not remove mock/localStorage repositories yet.
@@ -176,3 +195,4 @@ Then restart the dev server. Mock demo credentials and localStorage behavior rem
 - Do not hardcode Firebase config values in source files.
 - Do not add Storage uploads before file limits and rules are implemented.
 - Do not use production Firebase data before Firestore and Storage rules are tested.
+- Firestore security rules are still required before production use.

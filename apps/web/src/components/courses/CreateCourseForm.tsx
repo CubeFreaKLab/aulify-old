@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
-import { createCourse } from "../../lib/repositories/courseRepository";
+import { createCourseAsync } from "../../lib/repositories/courseRepository";
 
 type CreateCourseErrors = {
   description: string;
@@ -16,6 +16,8 @@ export function CreateCourseForm() {
   const [description, setDescription] = useState("");
   const [groupLabel, setGroupLabel] = useState("");
   const [errors, setErrors] = useState<CreateCourseErrors>({ description: "", name: "" });
+  const [formError, setFormError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   function validateForm() {
     return {
@@ -24,18 +26,26 @@ export function CreateCourseForm() {
     };
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setFormError("");
+    setIsSaving(true);
 
     const nextErrors = validateForm();
     setErrors(nextErrors);
 
     if (nextErrors.name || nextErrors.description) {
+      setIsSaving(false);
       return;
     }
 
-    createCourse({ description, groupLabel, name });
-    router.push("/teacher/courses");
+    try {
+      await createCourseAsync({ description, groupLabel, name });
+      router.push("/teacher/courses");
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : "No pudimos crear el curso.");
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -89,6 +99,7 @@ export function CreateCourseForm() {
       </label>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+        {formError ? <p className="m-0 text-sm font-semibold text-[#E5484D] sm:mr-auto sm:self-center">{formError}</p> : null}
         <Link
           href="/teacher/courses"
           className="inline-flex min-h-12 items-center justify-center rounded-full border border-neutral-black bg-neutral-white px-6 text-base font-bold text-neutral-black transition-colors duration-base hover:border-brand-green hover:text-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
@@ -97,9 +108,10 @@ export function CreateCourseForm() {
         </Link>
         <button
           type="submit"
+          disabled={isSaving}
           className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
         >
-          Crear curso
+          {isSaving ? "Creando..." : "Crear curso"}
         </button>
       </div>
     </form>

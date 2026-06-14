@@ -138,6 +138,7 @@ Fields:
 | `subject` | string | Subject/category. |
 | `teacherId` | string | Primary owner user ID. |
 | `status` | `draft` \| `active` \| `archived` | Course lifecycle. |
+| `joinCode` | string optional | Short code for the first simple student enrollment flow. |
 | `coverImageUrl` | string optional | Future course cover asset. |
 | `createdAt` | timestamp | Server timestamp. |
 | `updatedAt` | timestamp | Server timestamp. |
