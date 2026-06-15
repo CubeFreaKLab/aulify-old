@@ -7,8 +7,8 @@ export default function StudentProgressPage() {
     <AppShell
       activeHref="/student/progress"
       role="student"
-      title="Mi progreso"
-      subtitle="Revisa tu avance en cursos, tareas y actividades."
+      title="Mi avance"
+      subtitle="Revisa tus tareas, actividades, asistencia y rendimiento."
       primaryAction={
         <Link
           href="/student/courses"

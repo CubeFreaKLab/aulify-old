@@ -23,6 +23,7 @@ Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`:
 
 Remaining planning only:
 
+- derived progress aggregates, if later needed for performance
 - `files`
 - `settings`
 - `liveQuizRooms`
@@ -387,6 +388,25 @@ Migration status:
 - Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
 - Current implementation uses deterministic ID `{activityId}_{studentId}` and preserves one attempt per student per activity.
 
+### Derived progress and academic tracking
+
+Current status:
+
+- No `progress` Firestore collection exists.
+- Teacher `Seguimiento académico` and student `Mi avance` are calculated from existing repositories.
+- In firebase mode, the calculations read Firebase-backed courses, course members, tasks, task submissions, attendance, activities, and activity attempts.
+- Mock/localStorage remains active when the data source is `mock`.
+
+Concept rule:
+
+- Do not store or display a generic course completion percentage until courses have explicit completion requirements, dates, or module criteria.
+- Academic advancement should be derived only from submitted tasks and completed asynchronous activities.
+- Attendance and performance should remain separate indicators.
+
+Future option:
+
+- Add aggregate documents only if query cost or page latency requires it after production data patterns are known.
+
 ### `files`
 
 Suggested fields:
@@ -473,10 +493,10 @@ Suggested fields:
 
 Current state:
 
-- `apps/web/src/lib/repositories` remains active and synchronous.
-- Mock arrays and localStorage helpers remain active.
-- UI pages continue importing the current repositories.
-- No Firebase package is installed yet.
+- `apps/web/src/lib/repositories` remains the UI-facing boundary.
+- Mock arrays and localStorage helpers remain active in `mock` mode.
+- Firebase adapters are used behind the data-source switch for migrated modules.
+- Progress/academic tracking remains derived from existing repositories instead of persisted as a separate collection.
 
 Future adapter shape:
 
@@ -496,7 +516,7 @@ Migration order:
 5. `notes`, `tasks`, and `taskSubmissions`.
 6. `attendanceSessions` and `attendanceRecords`.
 7. `activities` and `activityAttempts`.
-8. `progress` aggregates.
+8. Derived progress/academic tracking from existing repositories.
 9. `files` and Firebase Storage.
 10. `liveQuizRooms`, `liveQuizPlayers`, and `liveQuizAnswers`.
 

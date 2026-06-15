@@ -1,55 +1,92 @@
 import type { Activity, ActivityAttempt } from "./mock/activities";
-import { getCurrentStudentActivityAttempt, getPublishedActivities } from "./mock/activities";
+import { currentStudentActivityIdentity, getPublishedActivities } from "./mock/activities";
+import type { AttendanceRecord, AttendanceSession, AttendanceStudent } from "./mock/attendance";
+import { calculateAttendancePercentage, countAttendanceStatuses } from "./mock/attendance";
 import type { Course } from "./mock/courses";
-import type { Note } from "./mock/notes";
-import { getPublishedNotes } from "./mock/notes";
 import type { Task, TaskSubmission } from "./mock/tasks";
-import { getCurrentStudentSubmission, getPublishedTasks } from "./mock/tasks";
+import { currentStudentSubmissionIdentity, getPublishedTasks } from "./mock/tasks";
+
+export type AcademicStudent = {
+  email?: string;
+  id: string;
+  name: string;
+};
+
+export type CourseRoster = {
+  courseId: string;
+  students: AttendanceStudent[];
+};
 
 export type ProgressDataset = {
   activities: Activity[];
   activityAttempts: ActivityAttempt[];
+  attendanceRecords: AttendanceRecord[];
+  attendanceRosters: CourseRoster[];
+  attendanceSessions: AttendanceSession[];
   courses: Course[];
-  notes: Note[];
+  currentStudent?: AcademicStudent;
   taskSubmissions: TaskSubmission[];
   tasks: Task[];
 };
 
-export type TeacherProgressSummary = {
+export type TeacherTrackingSummary = {
   activeCourses: number;
-  activitiesCompleted: number;
-  activityParticipation: number;
-  completionRate: number;
-  pendingTasks: number;
-  publishedTasks: number;
+  activityAttemptsReceived: number;
+  activityParticipationRate: number;
+  averageAttendance: number;
+  expectedActivityAttempts: number;
+  expectedSubmissions: number;
   submissionsReceived: number;
+  taskSubmissionRate: number;
+  totalActiveStudents: number;
 };
 
-export type StudentProgressSummary = {
+export type TeacherCourseTracking = {
+  academicParticipation: number;
+  activityCount: number;
+  activityParticipationRate: number;
+  attendanceRate: number;
+  courseId: string;
+  name: string;
+  studentsCount: number;
+  taskCount: number;
+  taskSubmissionRate: number;
+};
+
+export type RiskStudent = {
+  attendancePercentage?: number;
+  courseId: string;
+  courseName: string;
+  detail: string;
+  id: string;
+  missingActivities: number;
+  missingTasks: number;
+  signals: string[];
+  studentName: string;
+};
+
+export type StudentTrackingSummary = {
+  academicAdvancement: number;
   activitiesCompleted: number;
+  activityCompletionRate: number;
+  attendancePercentage: number;
+  averagePerformance?: number;
   coursesEnrolled: number;
-  generalProgress: number;
+  publishedActivities: number;
+  publishedTasks: number;
+  taskCompletionRate: number;
   tasksSubmitted: number;
 };
 
-export type TeacherCourseProgress = {
-  activityCount: number;
-  courseId: string;
-  groupLabel: string;
-  groupsCount: number;
-  name: string;
-  progress: number;
-  studentsCount: number;
-  taskCount: number;
-};
-
-export type StudentCourseProgress = {
-  completedActivities: number;
+export type StudentCourseTracking = {
+  academicAdvancement: number;
+  activityCompletionRate: number;
+  attendancePercentage: number;
   courseId: string;
   name: string;
-  notesCount: number;
+  pendingActivities: number;
   pendingTasks: number;
-  progress: number;
+  taskCompletionRate: number;
 };
 
 export type ProgressFeedItem = {
@@ -68,29 +105,16 @@ export type PendingProgressItem = {
   title: string;
 };
 
-function clampPercent(value: number) {
-  return Math.max(0, Math.min(100, Math.round(value)));
-}
-
-function percent(part: number, total: number) {
-  if (total <= 0) {
-    return 0;
-  }
-
-  return clampPercent((part / total) * 100);
-}
-
-function average(values: number[]) {
-  if (!values.length) {
-    return 0;
-  }
-
-  return clampPercent(values.reduce((sum, value) => sum + value, 0) / values.length);
-}
-
-function sortBySubmittedAtDesc<T extends { submittedAt: string }>(items: T[]) {
-  return [...items].sort((firstItem, secondItem) => new Date(secondItem.submittedAt).getTime() - new Date(firstItem.submittedAt).getTime());
-}
+export const emptyProgressDataset: ProgressDataset = {
+  activities: [],
+  activityAttempts: [],
+  attendanceRecords: [],
+  attendanceRosters: [],
+  attendanceSessions: [],
+  courses: [],
+  taskSubmissions: [],
+  tasks: []
+};
 
 export function formatProgressDate(value: string) {
   return new Intl.DateTimeFormat("es", {
@@ -100,164 +124,451 @@ export function formatProgressDate(value: string) {
   }).format(new Date(value));
 }
 
-export function calculateCourseProgress(
-  course: Course,
-  tasks: Task[],
-  taskSubmissions: TaskSubmission[],
-  activities: Activity[],
-  activityAttempts: ActivityAttempt[]
+function percent(value: number, total: number) {
+  if (!total) {
+    return 0;
+  }
+
+  return Math.round((value / total) * 100);
+}
+
+function average(values: number[]) {
+  const usableValues = values.filter((value) => Number.isFinite(value));
+
+  if (!usableValues.length) {
+    return 0;
+  }
+
+  return Math.round(usableValues.reduce((sum, value) => sum + value, 0) / usableValues.length);
+}
+
+function getCourseIds(courses: Course[]) {
+  return new Set(courses.map((course) => course.id));
+}
+
+function getCourseById(dataset: ProgressDataset, courseId: string) {
+  return dataset.courses.find((course) => course.id === courseId);
+}
+
+function getPublishedCourseTasks(dataset: ProgressDataset, courseId: string) {
+  return getPublishedTasks(dataset.tasks).filter((task) => task.courseId === courseId);
+}
+
+function getPublishedCourseActivities(dataset: ProgressDataset, courseId: string) {
+  return getPublishedActivities(dataset.activities).filter((activity) => activity.courseId === courseId);
+}
+
+function getCourseRoster(dataset: ProgressDataset, course: Course) {
+  const roster = dataset.attendanceRosters.find((item) => item.courseId === course.id)?.students ?? [];
+
+  if (roster.length) {
+    return roster;
+  }
+
+  return Array.from({ length: course.studentsCount }, (_, index) => ({
+    email: "",
+    id: `${course.id}-student-${index + 1}`,
+    name: `Estudiante ${index + 1}`
+  }));
+}
+
+function getTaskCourseId(taskById: Map<string, Task>, submission: TaskSubmission) {
+  return submission.courseId ?? taskById.get(submission.taskId)?.courseId;
+}
+
+function getActivityCourseId(activityById: Map<string, Activity>, attempt: ActivityAttempt) {
+  return attempt.courseId ?? activityById.get(attempt.activityId)?.courseId;
+}
+
+function normalize(value?: string) {
+  return value?.trim().toLowerCase() ?? "";
+}
+
+function matchesStudentIdentity(
+  candidate: { studentEmail?: string; studentId?: string; studentName: string },
+  student?: AcademicStudent
 ) {
-  const courseTasks = tasks.filter((task) => task.courseId === course.id && task.status === "published");
-  const courseActivities = activities.filter((activity) => activity.courseId === course.id && activity.status === "published");
-  const taskCompletion = courseTasks.length
-    ? percent(
-        courseTasks.filter((task) => taskSubmissions.some((submission) => submission.taskId === task.id)).length,
-        courseTasks.length
-      )
-    : course.progress.value;
-  const activityCompletion = courseActivities.length
-    ? percent(
-        courseActivities.filter((activity) => activityAttempts.some((attempt) => attempt.activityId === activity.id)).length,
-        courseActivities.length
-      )
-    : course.progress.value;
+  if (!student) {
+    return (
+      normalize(candidate.studentEmail) === currentStudentSubmissionIdentity.email ||
+      candidate.studentName === currentStudentSubmissionIdentity.name ||
+      candidate.studentName === currentStudentActivityIdentity.name
+    );
+  }
 
-  return average([course.progress.value, taskCompletion, activityCompletion]);
+  return (
+    Boolean(candidate.studentId && candidate.studentId === student.id) ||
+    Boolean(candidate.studentEmail && normalize(candidate.studentEmail) === normalize(student.email)) ||
+    candidate.studentName === student.name
+  );
 }
 
-export function getTeacherProgressSummary(dataset: ProgressDataset): TeacherProgressSummary {
-  const publishedTasks = dataset.tasks.filter((task) => task.status === "published");
-  const publishedActivities = dataset.activities.filter((activity) => activity.status === "published");
-  const pendingTasks = publishedTasks.filter(
-    (task) => !dataset.taskSubmissions.some((submission) => submission.taskId === task.id)
-  ).length;
+function matchesActivityStudent(attempt: ActivityAttempt, student?: AcademicStudent) {
+  if (!student) {
+    return attempt.studentName === currentStudentActivityIdentity.name || attempt.studentName === currentStudentSubmissionIdentity.name;
+  }
+
+  return Boolean(attempt.studentId && attempt.studentId === student.id) || attempt.studentName === student.name;
+}
+
+function matchesAttendanceStudent(record: AttendanceRecord, student?: AcademicStudent) {
+  if (!student) {
+    return record.studentId === "student-demo" || record.studentName === currentStudentSubmissionIdentity.name;
+  }
+
+  return record.studentId === student.id || record.studentName === student.name;
+}
+
+function getAttendanceRate(records: AttendanceRecord[]) {
+  if (!records.length) {
+    return 0;
+  }
+
+  return calculateAttendancePercentage(countAttendanceStatuses(records));
+}
+
+function getStudentAttendanceRecords(dataset: ProgressDataset, courseId?: string) {
+  return dataset.attendanceRecords.filter(
+    (record) => (!courseId || record.courseId === courseId) && matchesAttendanceStudent(record, dataset.currentStudent)
+  );
+}
+
+function getCompletedTaskIds(dataset: ProgressDataset, courseId?: string) {
+  const taskById = new Map(dataset.tasks.map((task) => [task.id, task]));
+
+  return new Set(
+    dataset.taskSubmissions
+      .filter((submission) => matchesStudentIdentity(submission, dataset.currentStudent))
+      .filter((submission) => !courseId || getTaskCourseId(taskById, submission) === courseId)
+      .map((submission) => submission.taskId)
+  );
+}
+
+function getCompletedActivityIds(dataset: ProgressDataset, courseId?: string) {
+  const activityById = new Map(dataset.activities.map((activity) => [activity.id, activity]));
+
+  return new Set(
+    dataset.activityAttempts
+      .filter((attempt) => matchesActivityStudent(attempt, dataset.currentStudent))
+      .filter((attempt) => !courseId || getActivityCourseId(activityById, attempt) === courseId)
+      .map((attempt) => attempt.activityId)
+  );
+}
+
+function getScoreAverage(scores: Array<number | undefined>) {
+  const numericScores = scores.filter((score): score is number => typeof score === "number");
+
+  if (!numericScores.length) {
+    return undefined;
+  }
+
+  return average(numericScores);
+}
+
+export function getTeacherTrackingSummary(dataset: ProgressDataset): TeacherTrackingSummary {
+  const activeCourses = dataset.courses.filter((course) => course.status !== "completed");
+  const taskById = new Map(dataset.tasks.map((task) => [task.id, task]));
+  const activityById = new Map(dataset.activities.map((activity) => [activity.id, activity]));
+  const courseIds = getCourseIds(activeCourses);
+  const publishedTasks = getPublishedTasks(dataset.tasks).filter((task) => courseIds.has(task.courseId));
+  const publishedActivities = getPublishedActivities(dataset.activities).filter((activity) => courseIds.has(activity.courseId));
+  const totalActiveStudents = activeCourses.reduce((sum, course) => sum + getCourseRoster(dataset, course).length, 0);
+  const expectedSubmissions = activeCourses.reduce(
+    (sum, course) => sum + getPublishedCourseTasks(dataset, course.id).length * getCourseRoster(dataset, course).length,
+    0
+  );
+  const expectedActivityAttempts = activeCourses.reduce(
+    (sum, course) => sum + getPublishedCourseActivities(dataset, course.id).length * getCourseRoster(dataset, course).length,
+    0
+  );
+  const publishedTaskIds = new Set(publishedTasks.map((task) => task.id));
+  const publishedActivityIds = new Set(publishedActivities.map((activity) => activity.id));
+  const submissionsReceived = dataset.taskSubmissions.filter((submission) => {
+    const courseId = getTaskCourseId(taskById, submission);
+    return publishedTaskIds.has(submission.taskId) && Boolean(courseId && courseIds.has(courseId));
+  }).length;
+  const activityAttemptsReceived = dataset.activityAttempts.filter((attempt) => {
+    const courseId = getActivityCourseId(activityById, attempt);
+    return publishedActivityIds.has(attempt.activityId) && Boolean(courseId && courseIds.has(courseId));
+  }).length;
 
   return {
-    activeCourses: dataset.courses.filter((course) => course.status !== "completed").length,
-    activitiesCompleted: dataset.activityAttempts.length,
-    activityParticipation: percent(dataset.activityAttempts.length, publishedActivities.length),
-    completionRate: percent(dataset.taskSubmissions.length + dataset.activityAttempts.length, publishedTasks.length + publishedActivities.length),
-    pendingTasks,
-    publishedTasks: publishedTasks.length,
-    submissionsReceived: dataset.taskSubmissions.length
+    activeCourses: activeCourses.length,
+    activityAttemptsReceived,
+    activityParticipationRate: percent(activityAttemptsReceived, expectedActivityAttempts),
+    averageAttendance: getAttendanceRate(dataset.attendanceRecords.filter((record) => courseIds.has(record.courseId))),
+    expectedActivityAttempts,
+    expectedSubmissions,
+    submissionsReceived,
+    taskSubmissionRate: percent(submissionsReceived, expectedSubmissions),
+    totalActiveStudents
   };
 }
 
-export function getStudentProgressSummary(dataset: ProgressDataset): StudentProgressSummary {
-  const publishedTasks = getPublishedTasks(dataset.tasks);
-  const publishedActivities = getPublishedActivities(dataset.activities);
-  const tasksSubmitted = publishedTasks.filter((task) => getCurrentStudentSubmission(task.id, dataset.taskSubmissions)).length;
-  const activitiesCompleted = publishedActivities.filter((activity) =>
-    getCurrentStudentActivityAttempt(activity.id, dataset.activityAttempts)
-  ).length;
-  const courseAverage = average(dataset.courses.map((course) => course.progress.value));
-  const taskRate = percent(tasksSubmitted, publishedTasks.length);
-  const activityRate = percent(activitiesCompleted, publishedActivities.length);
-
-  return {
-    activitiesCompleted,
-    coursesEnrolled: dataset.courses.length,
-    generalProgress: average([courseAverage, taskRate, activityRate]),
-    tasksSubmitted
-  };
-}
-
-export function getTeacherCourseProgress(dataset: ProgressDataset): TeacherCourseProgress[] {
+export function getTeacherCourseTracking(dataset: ProgressDataset): TeacherCourseTracking[] {
   return dataset.courses.map((course) => {
-    const courseTasks = dataset.tasks.filter((task) => task.courseId === course.id);
-    const courseActivities = dataset.activities.filter((activity) => activity.courseId === course.id);
+    const roster = getCourseRoster(dataset, course);
+    const publishedTasks = getPublishedCourseTasks(dataset, course.id);
+    const publishedActivities = getPublishedCourseActivities(dataset, course.id);
+    const taskIds = new Set(publishedTasks.map((task) => task.id));
+    const activityIds = new Set(publishedActivities.map((activity) => activity.id));
+    const submissions = dataset.taskSubmissions.filter((submission) => taskIds.has(submission.taskId)).length;
+    const attempts = dataset.activityAttempts.filter((attempt) => activityIds.has(attempt.activityId)).length;
+    const attendanceRecords = dataset.attendanceRecords.filter((record) => record.courseId === course.id);
+    const taskSubmissionRate = percent(submissions, publishedTasks.length * roster.length);
+    const activityParticipationRate = percent(attempts, publishedActivities.length * roster.length);
+    const attendanceRate = getAttendanceRate(attendanceRecords);
+    const participationInputs = [
+      publishedTasks.length ? taskSubmissionRate : undefined,
+      publishedActivities.length ? activityParticipationRate : undefined,
+      attendanceRecords.length ? attendanceRate : undefined
+    ].filter((value): value is number => typeof value === "number");
 
     return {
-      activityCount: courseActivities.length,
+      academicParticipation: average(participationInputs),
+      activityCount: publishedActivities.length,
+      activityParticipationRate,
+      attendanceRate,
       courseId: course.id,
-      groupLabel: course.groupLabel,
-      groupsCount: course.groupsCount,
       name: course.name,
-      progress: calculateCourseProgress(course, dataset.tasks, dataset.taskSubmissions, dataset.activities, dataset.activityAttempts),
-      studentsCount: course.studentsCount,
-      taskCount: courseTasks.length
+      studentsCount: roster.length,
+      taskCount: publishedTasks.length,
+      taskSubmissionRate
     };
   });
 }
 
-export function getStudentCourseProgress(dataset: ProgressDataset): StudentCourseProgress[] {
-  const publishedNotes = getPublishedNotes(dataset.notes);
-  const publishedTasks = getPublishedTasks(dataset.tasks);
-  const publishedActivities = getPublishedActivities(dataset.activities);
+export function getRiskStudents(dataset: ProgressDataset): RiskStudent[] {
+  return dataset.courses
+    .flatMap((course) => {
+      const roster = getCourseRoster(dataset, course);
+      const publishedTasks = getPublishedCourseTasks(dataset, course.id);
+      const publishedActivities = getPublishedCourseActivities(dataset, course.id);
+      const taskSubmissionsByStudent = new Map<string, Set<string>>();
+      const activityAttemptsByStudent = new Map<string, Set<string>>();
 
-  return dataset.courses.map((course) => {
-    const courseTasks = publishedTasks.filter((task) => task.courseId === course.id);
-    const courseActivities = publishedActivities.filter((activity) => activity.courseId === course.id);
+      dataset.taskSubmissions.forEach((submission) => {
+        if (!publishedTasks.some((task) => task.id === submission.taskId)) {
+          return;
+        }
 
-    return {
-      completedActivities: courseActivities.filter((activity) => getCurrentStudentActivityAttempt(activity.id, dataset.activityAttempts)).length,
-      courseId: course.id,
-      name: course.name,
-      notesCount: publishedNotes.filter((note) => note.courseId === course.id).length,
-      pendingTasks: courseTasks.filter((task) => !getCurrentStudentSubmission(task.id, dataset.taskSubmissions)).length,
-      progress: calculateCourseProgress(course, publishedTasks, dataset.taskSubmissions, publishedActivities, dataset.activityAttempts)
-    };
-  });
+        const studentKey = submission.studentId ?? normalize(submission.studentEmail) ?? submission.studentName;
+        const existing = taskSubmissionsByStudent.get(studentKey) ?? new Set<string>();
+        existing.add(submission.taskId);
+        taskSubmissionsByStudent.set(studentKey, existing);
+      });
+
+      dataset.activityAttempts.forEach((attempt) => {
+        if (!publishedActivities.some((activity) => activity.id === attempt.activityId)) {
+          return;
+        }
+
+        const studentKey = attempt.studentId ?? attempt.studentName;
+        const existing = activityAttemptsByStudent.get(studentKey) ?? new Set<string>();
+        existing.add(attempt.activityId);
+        activityAttemptsByStudent.set(studentKey, existing);
+      });
+
+      return roster.flatMap((student) => {
+        const studentTaskKeys = [student.id, normalize(student.email), student.name];
+        const submittedTaskIds = new Set(studentTaskKeys.flatMap((key) => [...(taskSubmissionsByStudent.get(key) ?? [])]));
+        const attemptedActivityIds = new Set(studentTaskKeys.flatMap((key) => [...(activityAttemptsByStudent.get(key) ?? [])]));
+        const attendanceRecords = dataset.attendanceRecords.filter(
+          (record) => record.courseId === course.id && (record.studentId === student.id || record.studentName === student.name)
+        );
+        const attendancePercentage = attendanceRecords.length ? getAttendanceRate(attendanceRecords) : undefined;
+        const missingTasks = Math.max(0, publishedTasks.length - submittedTaskIds.size);
+        const missingActivities = Math.max(0, publishedActivities.length - attemptedActivityIds.size);
+        const signals = [
+          attendancePercentage !== undefined && attendancePercentage < 75 ? "asistencia baja" : "",
+          missingTasks > 0 ? "tareas pendientes" : "",
+          missingActivities > 0 ? "actividades sin completar" : ""
+        ].filter(Boolean);
+
+        if (!signals.length) {
+          return [];
+        }
+
+        return [
+          {
+            attendancePercentage,
+            courseId: course.id,
+            courseName: course.name,
+            detail: signals.join(" · "),
+            id: `${course.id}-${student.id}`,
+            missingActivities,
+            missingTasks,
+            signals,
+            studentName: student.name
+          }
+        ];
+      });
+    })
+    .slice(0, 8);
 }
 
 export function getTeacherRecentProgress(dataset: ProgressDataset): ProgressFeedItem[] {
-  const courseNames = new Map(dataset.courses.map((course) => [course.id, course.name]));
-  const taskCourseById = new Map(dataset.tasks.map((task) => [task.id, task.courseId]));
-  const activityCourseById = new Map(dataset.activities.map((activity) => [activity.id, activity.courseId]));
+  const taskById = new Map(dataset.tasks.map((task) => [task.id, task]));
+  const activityById = new Map(dataset.activities.map((activity) => [activity.id, activity]));
+  const courseById = new Map(dataset.courses.map((course) => [course.id, course]));
+  const taskItems = dataset.taskSubmissions.map((submission) => {
+    const task = taskById.get(submission.taskId);
+    const course = task ? courseById.get(task.courseId) : undefined;
 
-  const submissions = dataset.taskSubmissions.map<ProgressFeedItem>((submission) => ({
-    detail: `${courseNames.get(taskCourseById.get(submission.taskId) ?? "") ?? "Curso"} · ${submission.studentName}`,
-    id: `submission-${submission.id}`,
-    label: "Entrega recibida",
-    submittedAt: submission.submittedAt,
-    title: submission.content
-  }));
-  const attempts = dataset.activityAttempts.map<ProgressFeedItem>((attempt) => ({
-    detail: `${courseNames.get(activityCourseById.get(attempt.activityId) ?? "") ?? "Curso"} · ${attempt.studentName}`,
-    id: `attempt-${attempt.id}`,
-    label: "Actividad completada",
-    submittedAt: attempt.submittedAt,
-    title: attempt.score === undefined ? "Respuesta registrada" : `Resultado ${attempt.score}%`
-  }));
+    return {
+      detail: `${submission.studentName} · ${course?.name ?? "Curso"}`,
+      id: `submission-${submission.id}`,
+      label: "Entrega de tarea",
+      submittedAt: submission.submittedAt,
+      title: task?.title ?? "Tarea"
+    };
+  });
+  const activityItems = dataset.activityAttempts.map((attempt) => {
+    const activity = activityById.get(attempt.activityId);
+    const course = activity ? courseById.get(activity.courseId) : undefined;
 
-  return sortBySubmittedAtDesc([...submissions, ...attempts]).slice(0, 6);
+    return {
+      detail: `${attempt.studentName} · ${course?.name ?? "Curso"}`,
+      id: `attempt-${attempt.id}`,
+      label: "Actividad completada",
+      submittedAt: attempt.submittedAt,
+      title: activity?.title ?? "Actividad"
+    };
+  });
+
+  return [...taskItems, ...activityItems]
+    .sort((first, second) => new Date(second.submittedAt).getTime() - new Date(first.submittedAt).getTime())
+    .slice(0, 6);
 }
 
-export function getStudentRecentProgress(dataset: ProgressDataset): ProgressFeedItem[] {
-  const currentTaskSubmissions = dataset.taskSubmissions.filter((submission) => getCurrentStudentSubmission(submission.taskId, [submission]));
-  const currentActivityAttempts = dataset.activityAttempts.filter((attempt) =>
-    getCurrentStudentActivityAttempt(attempt.activityId, [attempt])
-  );
+export function getTeacherProgress(dataset: ProgressDataset) {
+  return {
+    courseTracking: getTeacherCourseTracking(dataset),
+    recentProgress: getTeacherRecentProgress(dataset),
+    riskStudents: getRiskStudents(dataset),
+    summary: getTeacherTrackingSummary(dataset)
+  };
+}
 
-  return getTeacherRecentProgress({
-    ...dataset,
-    activityAttempts: currentActivityAttempts,
-    taskSubmissions: currentTaskSubmissions
+export function getStudentTrackingSummary(dataset: ProgressDataset): StudentTrackingSummary {
+  const courseIds = getCourseIds(dataset.courses);
+  const publishedTasks = getPublishedTasks(dataset.tasks).filter((task) => courseIds.has(task.courseId));
+  const publishedActivities = getPublishedActivities(dataset.activities).filter((activity) => courseIds.has(activity.courseId));
+  const completedTaskIds = getCompletedTaskIds(dataset);
+  const completedActivityIds = getCompletedActivityIds(dataset);
+  const studentTaskSubmissions = dataset.taskSubmissions.filter((submission) =>
+    matchesStudentIdentity(submission, dataset.currentStudent)
+  );
+  const studentActivityAttempts = dataset.activityAttempts.filter((attempt) => matchesActivityStudent(attempt, dataset.currentStudent));
+  const taskCompletionRate = percent(completedTaskIds.size, publishedTasks.length);
+  const activityCompletionRate = percent(completedActivityIds.size, publishedActivities.length);
+  const advancementInputs = [
+    publishedTasks.length ? taskCompletionRate : undefined,
+    publishedActivities.length ? activityCompletionRate : undefined
+  ].filter((value): value is number => typeof value === "number");
+  const performanceScores = [
+    ...studentTaskSubmissions.map((submission) => submission.score),
+    ...studentActivityAttempts.map((attempt) => attempt.score)
+  ];
+
+  return {
+    academicAdvancement: average(advancementInputs),
+    activitiesCompleted: completedActivityIds.size,
+    activityCompletionRate,
+    attendancePercentage: getAttendanceRate(getStudentAttendanceRecords(dataset)),
+    averagePerformance: getScoreAverage(performanceScores),
+    coursesEnrolled: dataset.courses.length,
+    publishedActivities: publishedActivities.length,
+    publishedTasks: publishedTasks.length,
+    taskCompletionRate,
+    tasksSubmitted: completedTaskIds.size
+  };
+}
+
+export function getStudentCourseTracking(dataset: ProgressDataset): StudentCourseTracking[] {
+  return dataset.courses.map((course) => {
+    const publishedTasks = getPublishedCourseTasks(dataset, course.id);
+    const publishedActivities = getPublishedCourseActivities(dataset, course.id);
+    const completedTaskIds = getCompletedTaskIds(dataset, course.id);
+    const completedActivityIds = getCompletedActivityIds(dataset, course.id);
+    const taskCompletionRate = percent(completedTaskIds.size, publishedTasks.length);
+    const activityCompletionRate = percent(completedActivityIds.size, publishedActivities.length);
+    const advancementInputs = [
+      publishedTasks.length ? taskCompletionRate : undefined,
+      publishedActivities.length ? activityCompletionRate : undefined
+    ].filter((value): value is number => typeof value === "number");
+
+    return {
+      academicAdvancement: average(advancementInputs),
+      activityCompletionRate,
+      attendancePercentage: getAttendanceRate(getStudentAttendanceRecords(dataset, course.id)),
+      courseId: course.id,
+      name: course.name,
+      pendingActivities: Math.max(0, publishedActivities.length - completedActivityIds.size),
+      pendingTasks: Math.max(0, publishedTasks.length - completedTaskIds.size),
+      taskCompletionRate
+    };
   });
 }
 
 export function getStudentPendingProgress(dataset: ProgressDataset): PendingProgressItem[] {
-  const publishedTasks = getPublishedTasks(dataset.tasks);
-  const publishedActivities = getPublishedActivities(dataset.activities);
-  const courseNames = new Map(dataset.courses.map((course) => [course.id, course.name]));
-  const pendingTasks = publishedTasks
-    .filter((task) => !getCurrentStudentSubmission(task.id, dataset.taskSubmissions))
-    .map<PendingProgressItem>((task) => ({
-      detail: `${courseNames.get(task.courseId) ?? "Curso"} · vence ${formatProgressDate(`${task.dueDate}T12:00:00`)}`,
+  const completedTaskIds = getCompletedTaskIds(dataset);
+  const completedActivityIds = getCompletedActivityIds(dataset);
+  const courseById = new Map(dataset.courses.map((course) => [course.id, course]));
+  const pendingTasks = getPublishedTasks(dataset.tasks)
+    .filter((task) => courseById.has(task.courseId) && !completedTaskIds.has(task.id))
+    .map((task) => ({
+      detail: `${courseById.get(task.courseId)?.name ?? "Curso"} · vence ${formatProgressDate(task.dueDate)}`,
       href: `/student/courses/${task.courseId}/tasks/${task.id}`,
       id: `task-${task.id}`,
-      label: "Tarea pendiente",
+      label: "Pendiente",
       title: task.title
     }));
-  const pendingActivities = publishedActivities
-    .filter((activity) => !getCurrentStudentActivityAttempt(activity.id, dataset.activityAttempts))
-    .map<PendingProgressItem>((activity) => ({
-      detail: courseNames.get(activity.courseId) ?? "Curso",
+  const pendingActivities = getPublishedActivities(dataset.activities)
+    .filter((activity) => courseById.has(activity.courseId) && !completedActivityIds.has(activity.id))
+    .map((activity) => ({
+      detail: courseById.get(activity.courseId)?.name ?? "Curso",
       href: `/student/courses/${activity.courseId}/activities/${activity.id}`,
       id: `activity-${activity.id}`,
-      label: "Actividad pendiente",
+      label: "Pendiente",
       title: activity.title
     }));
 
   return [...pendingTasks, ...pendingActivities].slice(0, 8);
+}
+
+export function getStudentRecentProgress(dataset: ProgressDataset): ProgressFeedItem[] {
+  const taskById = new Map(dataset.tasks.map((task) => [task.id, task]));
+  const activityById = new Map(dataset.activities.map((activity) => [activity.id, activity]));
+  const taskItems = dataset.taskSubmissions
+    .filter((submission) => matchesStudentIdentity(submission, dataset.currentStudent))
+    .map((submission) => ({
+      detail: "Completado",
+      id: `submission-${submission.id}`,
+      label: "Tarea entregada",
+      submittedAt: submission.submittedAt,
+      title: taskById.get(submission.taskId)?.title ?? "Tarea"
+    }));
+  const activityItems = dataset.activityAttempts
+    .filter((attempt) => matchesActivityStudent(attempt, dataset.currentStudent))
+    .map((attempt) => ({
+      detail: typeof attempt.score === "number" ? `Puntaje ${attempt.score}%` : "Completado",
+      id: `attempt-${attempt.id}`,
+      label: "Actividad completada",
+      submittedAt: attempt.submittedAt,
+      title: activityById.get(attempt.activityId)?.title ?? "Actividad"
+    }));
+
+  return [...taskItems, ...activityItems]
+    .sort((first, second) => new Date(second.submittedAt).getTime() - new Date(first.submittedAt).getTime())
+    .slice(0, 6);
+}
+
+export function getStudentProgress(dataset: ProgressDataset) {
+  return {
+    courseTracking: getStudentCourseTracking(dataset),
+    pendingItems: getStudentPendingProgress(dataset),
+    recentProgress: getStudentRecentProgress(dataset),
+    summary: getStudentTrackingSummary(dataset)
+  };
 }

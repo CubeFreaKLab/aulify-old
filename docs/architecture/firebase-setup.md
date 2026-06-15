@@ -12,7 +12,8 @@ This document explains the Firebase foundation for Aulify. The current app still
 - Firebase auth and profile adapters support registration, login, logout, current user lookup, and auth state listening.
 - Course and course member adapters support Firestore-backed course creation, listing, detail access, and student join-by-code.
 - Notes, tasks, task submissions, attendance sessions, attendance records, asynchronous activities, and activity attempts are Firebase-backed in firebase mode.
-- Progress, files, and live quizzes remain mock/localStorage.
+- Progress/academic tracking is derived from the active repositories; there is no dedicated Firestore progress collection yet.
+- Files and live quizzes remain mock/planning-only.
 - `NEXT_PUBLIC_AULIFY_DATA_SOURCE` defaults to `mock`.
 
 ## Required Firebase Products
@@ -83,7 +84,7 @@ The helper at `apps/web/src/lib/config/dataSource.ts` reads `NEXT_PUBLIC_AULIFY_
 Current behavior:
 
 - `mock`: the app continues using current mock/localStorage repositories.
-- `firebase`: auth, `users`, `profiles`, `courses`, `courseMembers`, `notes`, `tasks`, `taskSubmissions`, `attendanceSessions`, `attendanceRecords`, `activities`, and `activityAttempts` use Firebase. Progress, files, and live quizzes still use mock/localStorage data.
+- `firebase`: auth, `users`, `profiles`, `courses`, `courseMembers`, `notes`, `tasks`, `taskSubmissions`, `attendanceSessions`, `attendanceRecords`, `activities`, and `activityAttempts` use Firebase. Progress/academic tracking is calculated from those repositories. Files and live quizzes are still pending.
 
 Task attachments remain metadata-only in this phase. The app stores file name, type, size, and PDF size status, but does not upload or store real file bytes.
 
@@ -144,7 +145,7 @@ Path conventions are documented in `docs/architecture/firebase-data-contracts.md
 5. `notes`, `tasks`, and `taskSubmissions`.
 6. `attendanceSessions` and `attendanceRecords`.
 7. `activities` and `activityAttempts`.
-8. `progress` aggregates.
+8. Derived progress/academic tracking from existing repositories.
 9. `files` and Firebase Storage.
 10. Live quiz data.
 
@@ -198,7 +199,7 @@ Then restart the dev server. Mock demo credentials and localStorage behavior rem
 13. Confirm `courseMembers/{courseId}_{studentId}` exists with role `student` and status `active`.
 14. Confirm the student course list shows the course.
 
-Notes and tasks created inside Firestore courses now use the same Firestore course IDs. Activities and attendance still use mock/localStorage data.
+Notes, tasks, attendance, and asynchronous activities created inside Firestore courses now use the same Firestore course IDs.
 
 ## Testing Firestore Notes, Tasks, and Submissions Locally
 
@@ -250,6 +251,19 @@ Excel export uses the active data source, but report styling is not redesigned i
 10. Log back in as the teacher and confirm activity results read the Firebase attempts.
 
 Live quiz rooms, room codes, lobbies, rankings, and Realtime Database are future work and are not part of the asynchronous activities migration.
+
+## Testing Derived Academic Tracking Locally
+
+1. Set `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+2. Restart the web dev server.
+3. Log in as a Firebase teacher.
+4. Open `/teacher/progress`.
+5. Confirm the page shows academic tracking based on Firestore courses, members, tasks, submissions, attendance, activities, and attempts.
+6. Log in as a Firebase student.
+7. Open `/student/progress`.
+8. Confirm `Mi avance` reflects published tasks, submitted tasks, published activities, submitted attempts, and the student's attendance records.
+
+There is no `progress` Firestore collection in this phase. If aggregate documents are needed later for performance, they should be added after the raw module data and security rules are stable.
 
 ## Guardrails
 

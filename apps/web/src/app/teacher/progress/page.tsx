@@ -7,8 +7,8 @@ export default function TeacherProgressPage() {
     <AppShell
       activeHref="/teacher/progress"
       role="teacher"
-      title="Progreso"
-      subtitle="Consulta el avance general de tus cursos, tareas y actividades."
+      title="Seguimiento académico"
+      subtitle="Analiza entregas, actividades, asistencia y alertas de tus cursos."
       primaryAction={
         <Link
           href="/teacher/courses"

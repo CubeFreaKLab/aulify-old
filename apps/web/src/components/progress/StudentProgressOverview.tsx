@@ -5,46 +5,111 @@ import {
   getInitialStudentProgressDataset,
   getStudentProgress,
   getStudentProgressDataset,
+  getStudentProgressDatasetAsync,
   type ProgressDataset
 } from "../../lib/repositories/progressRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { emptyProgressDataset } from "../../lib/progress";
 import { CourseProgressCard } from "./CourseProgressCard";
 import { PendingProgressItem } from "./PendingProgressItem";
 import { ProgressSummaryCard } from "./ProgressSummaryCard";
 import { RecentProgressItem } from "./RecentProgressItem";
 
 export function StudentProgressOverview() {
-  const [dataset, setDataset] = useState<ProgressDataset>(getInitialStudentProgressDataset);
+  const [dataset, setDataset] = useState<ProgressDataset>(() =>
+    isFirebaseDataSource() ? emptyProgressDataset : getInitialStudentProgressDataset()
+  );
+  const [isLoading, setIsLoading] = useState(isFirebaseDataSource);
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    setDataset(getStudentProgressDataset());
+    let isActive = true;
+
+    if (!isFirebaseDataSource()) {
+      setDataset(getStudentProgressDataset());
+      return () => {
+        isActive = false;
+      };
+    }
+
+    setIsLoading(true);
+    getStudentProgressDatasetAsync()
+      .then((nextDataset) => {
+        if (isActive) {
+          setDataset(nextDataset);
+          setError("");
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setError("No se pudo cargar el seguimiento académico.");
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setIsLoading(false);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, []);
 
-  const { courseProgress, pendingItems, recentProgress, summary } = useMemo(() => getStudentProgress(dataset), [dataset]);
+  const { courseTracking, pendingItems, recentProgress, summary } = useMemo(() => getStudentProgress(dataset), [dataset]);
+
+  if (isLoading) {
+    return (
+      <div className="rounded-3xl border border-neutral-lightGray bg-neutral-white p-6 text-sm font-semibold text-neutral-darkGray">
+        Cargando seguimiento...
+        <span className="mt-2 block font-medium">Calculando indicadores...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="rounded-3xl border border-neutral-lightGray bg-neutral-white p-6 text-sm font-semibold text-neutral-darkGray">{error}</div>;
+  }
 
   return (
     <div className="grid gap-8">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" aria-label="Resumen de progreso del estudiante">
-        <ProgressSummaryCard helper="Cursos disponibles" label="Cursos inscritos" value={String(summary.coursesEnrolled)} />
-        <ProgressSummaryCard helper="Entregas registradas" label="Tareas entregadas" value={String(summary.tasksSubmitted)} />
-        <ProgressSummaryCard helper="Respuestas enviadas" label="Actividades completadas" value={String(summary.activitiesCompleted)} />
-        <ProgressSummaryCard helper="Promedio de avance" label="Progreso general" value={`${summary.generalProgress}%`} />
+      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5" aria-label="Resumen de avance del estudiante">
+        <ProgressSummaryCard
+          helper={`${summary.taskCompletionRate}% de tareas publicadas`}
+          label="Tareas entregadas"
+          value={`${summary.tasksSubmitted}/${summary.publishedTasks}`}
+        />
+        <ProgressSummaryCard
+          helper={`${summary.activityCompletionRate}% de actividades publicadas`}
+          label="Actividades completadas"
+          value={`${summary.activitiesCompleted}/${summary.publishedActivities}`}
+        />
+        <ProgressSummaryCard helper="Presentes, tardanzas y justificadas" label="Mi asistencia" value={`${summary.attendancePercentage}%`} />
+        <ProgressSummaryCard helper="Promedio con puntajes disponibles" label="Rendimiento" value={summary.averagePerformance === undefined ? "Sin datos" : `${summary.averagePerformance}%`} />
+        <ProgressSummaryCard helper="Solo tareas y actividades" label="Avance académico" value={`${summary.academicAdvancement}%`} />
       </section>
 
       <section className="grid gap-5">
-        <h2 className="m-0 text-2xl font-extrabold text-neutral-black">Progreso por curso</h2>
+        <h2 className="m-0 text-2xl font-extrabold text-neutral-black">Avance por curso</h2>
         <div className="grid gap-4 xl:grid-cols-3">
-          {courseProgress.map((course) => (
-            <CourseProgressCard
-              detailItems={[
-                `${course.pendingTasks} tareas pendientes`,
-                `${course.completedActivities} actividades completas`,
-                `${course.notesCount} notas publicadas`
-              ]}
-              key={course.courseId}
-              progress={course.progress}
-              title={course.name}
-            />
-          ))}
+          {courseTracking.length ? (
+            courseTracking.map((course) => (
+              <CourseProgressCard
+                detailItems={[
+                  `${course.pendingTasks} tareas pendientes`,
+                  `${course.pendingActivities} actividades pendientes`,
+                  `Asistencia ${course.attendancePercentage}%`
+                ]}
+                key={course.courseId}
+                progress={course.academicAdvancement}
+                title={course.name}
+              />
+            ))
+          ) : (
+            <div className="rounded-3xl border border-neutral-lightGray bg-neutral-white p-5 text-sm font-medium text-neutral-darkGray">
+              Sin datos suficientes todavía.
+            </div>
+          )}
         </div>
       </section>
 
