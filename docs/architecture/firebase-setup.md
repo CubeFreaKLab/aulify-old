@@ -11,8 +11,8 @@ This document explains the Firebase foundation for Aulify. The current app still
 - Firebase client initialization lives in `apps/web/src/lib/firebase/client.ts`.
 - Firebase auth and profile adapters support registration, login, logout, current user lookup, and auth state listening.
 - Course and course member adapters support Firestore-backed course creation, listing, detail access, and student join-by-code.
-- Notes, tasks, task submissions, attendance sessions, and attendance records are Firebase-backed in firebase mode.
-- Activities, progress, files, and live quizzes remain mock/localStorage.
+- Notes, tasks, task submissions, attendance sessions, attendance records, asynchronous activities, and activity attempts are Firebase-backed in firebase mode.
+- Progress, files, and live quizzes remain mock/localStorage.
 - `NEXT_PUBLIC_AULIFY_DATA_SOURCE` defaults to `mock`.
 
 ## Required Firebase Products
@@ -83,7 +83,7 @@ The helper at `apps/web/src/lib/config/dataSource.ts` reads `NEXT_PUBLIC_AULIFY_
 Current behavior:
 
 - `mock`: the app continues using current mock/localStorage repositories.
-- `firebase`: auth, `users`, `profiles`, `courses`, `courseMembers`, `notes`, `tasks`, `taskSubmissions`, `attendanceSessions`, and `attendanceRecords` use Firebase. Activities, progress, files, and live quizzes still use mock/localStorage data.
+- `firebase`: auth, `users`, `profiles`, `courses`, `courseMembers`, `notes`, `tasks`, `taskSubmissions`, `attendanceSessions`, `attendanceRecords`, `activities`, and `activityAttempts` use Firebase. Progress, files, and live quizzes still use mock/localStorage data.
 
 Task attachments remain metadata-only in this phase. The app stores file name, type, size, and PDF size status, but does not upload or store real file bytes.
 
@@ -130,6 +130,8 @@ The auth UI uses the mock or Firebase path based on `NEXT_PUBLIC_AULIFY_DATA_SOU
 - `taskSubmissions/{taskId}_{studentId}`
 - `attendanceSessions/{sessionId}`
 - `attendanceRecords/{sessionId}_{studentId}`
+- `activities/{activityId}`
+- `activityAttempts/{activityId}_{studentId}`
 
 Path conventions are documented in `docs/architecture/firebase-data-contracts.md`.
 
@@ -142,8 +144,9 @@ Path conventions are documented in `docs/architecture/firebase-data-contracts.md
 5. `notes`, `tasks`, and `taskSubmissions`.
 6. `attendanceSessions` and `attendanceRecords`.
 7. `activities` and `activityAttempts`.
-8. `files` and Firebase Storage.
-9. Live quiz data.
+8. `progress` aggregates.
+9. `files` and Firebase Storage.
+10. Live quiz data.
 
 ## Testing Firebase Auth Locally
 
@@ -232,6 +235,21 @@ Attachments are still metadata-only. Firebase Storage, upload validation, downlo
 13. Confirm the student sees only their own attendance summary and history.
 
 Excel export uses the active data source, but report styling is not redesigned in this phase.
+
+## Testing Firestore Activities Locally
+
+1. Set `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+2. Restart the web dev server.
+3. Log in as a Firebase teacher.
+4. Open a Firestore course.
+5. Create an asynchronous activity from the course detail.
+6. Confirm `activities/{activityId}` exists in Firestore with `courseId`, `createdBy`, `questions`, `type`, and `status`.
+7. Log in as a Firebase student and join the course by code if needed.
+8. Open the published activity and submit answers.
+9. Confirm `activityAttempts/{activityId}_{studentId}` exists in Firestore.
+10. Log back in as the teacher and confirm activity results read the Firebase attempts.
+
+Live quiz rooms, room codes, lobbies, rankings, and Realtime Database are future work and are not part of the asynchronous activities migration.
 
 ## Guardrails
 

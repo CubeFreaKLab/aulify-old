@@ -1,6 +1,8 @@
 import type { CourseId, UserId } from "@aulify/shared-types";
 
 export const firestoreCollections = {
+  activityAttempts: "activityAttempts",
+  activities: "activities",
   attendanceRecords: "attendanceRecords",
   attendanceSessions: "attendanceSessions",
   courseMembers: "courseMembers",
@@ -58,4 +60,16 @@ export function createAttendanceRecordId(sessionId: string, studentId: UserId) {
 
 export function attendanceRecordPath(sessionId: string, studentId: UserId) {
   return `${firestoreCollections.attendanceRecords}/${createAttendanceRecordId(sessionId, studentId)}`;
+}
+
+export function activityPath(activityId: string) {
+  return `${firestoreCollections.activities}/${activityId}`;
+}
+
+export function createActivityAttemptId(activityId: string, studentId: UserId) {
+  return `${activityId}_${studentId}`;
+}
+
+export function activityAttemptPath(activityId: string, studentId: UserId) {
+  return `${firestoreCollections.activityAttempts}/${createActivityAttemptId(activityId, studentId)}`;
 }

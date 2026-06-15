@@ -18,11 +18,11 @@ Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`:
 - `taskSubmissions`
 - `attendanceSessions`
 - `attendanceRecords`
+- `activities`
+- `activityAttempts`
 
 Remaining planning only:
 
-- `activities`
-- `activityAttempts`
 - `files`
 - `settings`
 - `liveQuizRooms`
@@ -354,6 +354,16 @@ Suggested fields:
 - `createdAt`
 - `updatedAt`
 
+Query patterns:
+
+- Teacher: by `courseId`, all statuses.
+- Student: by `courseId`, `status == published`, membership required.
+
+Migration status:
+
+- Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+- These are asynchronous course activities, not live room sessions.
+
 ### `activityAttempts`
 
 Suggested fields:
@@ -365,11 +375,17 @@ Suggested fields:
 - `answers`
 - `score`
 - `submittedAt`
+- `updatedAt`
 
 Document ID strategy:
 
 - For one attempt per student: `{activityId}_{studentId}`.
 - For multiple attempts later: auto ID plus attempt number.
+
+Migration status:
+
+- Firebase-backed in `apps/web` when `NEXT_PUBLIC_AULIFY_DATA_SOURCE=firebase`.
+- Current implementation uses deterministic ID `{activityId}_{studentId}` and preserves one attempt per student per activity.
 
 ### `files`
 
@@ -480,8 +496,9 @@ Migration order:
 5. `notes`, `tasks`, and `taskSubmissions`.
 6. `attendanceSessions` and `attendanceRecords`.
 7. `activities` and `activityAttempts`.
-8. `files` and Firebase Storage.
-9. `liveQuizRooms`, `liveQuizPlayers`, and `liveQuizAnswers`.
+8. `progress` aggregates.
+9. `files` and Firebase Storage.
+10. `liveQuizRooms`, `liveQuizPlayers`, and `liveQuizAnswers`.
 
 Module-by-module migration rule:
 

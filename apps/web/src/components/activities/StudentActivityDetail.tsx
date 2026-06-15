@@ -5,14 +5,15 @@ import { useEffect, useState } from "react";
 import { AppShell } from "../app/AppShell";
 import { ActivityAnswerForm } from "./ActivityAnswerForm";
 import {
-  getActivityById,
-  getCurrentStudentAttempt,
+  getActivityByIdAsync,
+  getCurrentStudentAttemptAsync,
   getInitialActivityById,
   getInitialCurrentStudentAttempt,
   type Activity,
   type ActivityAttempt
 } from "../../lib/repositories/activityRepository";
-import { getCourseById, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
+import { isFirebaseDataSource } from "../../lib/config/dataSource";
+import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 
 type StudentActivityDetailProps = {
   activityId: string;
@@ -20,16 +21,46 @@ type StudentActivityDetailProps = {
 };
 
 export function StudentActivityDetail({ activityId, courseId }: StudentActivityDetailProps) {
-  const [activity, setActivity] = useState<Activity | undefined>(() => getInitialActivityById(courseId, activityId, { publishedOnly: true }));
-  const [attempt, setAttempt] = useState<ActivityAttempt | undefined>(() => getInitialCurrentStudentAttempt(activityId));
-  const [course, setCourse] = useState<Course | undefined>(() => getInitialCourseById(courseId, "student"));
-  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(false);
+  const [activity, setActivity] = useState<Activity | undefined>(() =>
+    isFirebaseDataSource() ? undefined : getInitialActivityById(courseId, activityId, { publishedOnly: true })
+  );
+  const [attempt, setAttempt] = useState<ActivityAttempt | undefined>(() =>
+    isFirebaseDataSource() ? undefined : getInitialCurrentStudentAttempt(activityId)
+  );
+  const [course, setCourse] = useState<Course | undefined>(() => (isFirebaseDataSource() ? undefined : getInitialCourseById(courseId, "student")));
+  const [hasLoadedStoredData, setHasLoadedStoredData] = useState(!isFirebaseDataSource());
 
   useEffect(() => {
-    setActivity(getActivityById(courseId, activityId, { publishedOnly: true }));
-    setAttempt(getCurrentStudentAttempt(activityId));
-    setCourse(getCourseById(courseId, "student"));
-    setHasLoadedStoredData(true);
+    let isActive = true;
+
+    void Promise.all([
+      getActivityByIdAsync(courseId, activityId, { publishedOnly: true }),
+      getCurrentStudentAttemptAsync(activityId),
+      getCourseByIdAsync(courseId, "student")
+    ])
+      .then(([nextActivity, nextAttempt, nextCourse]) => {
+        if (isActive) {
+          setActivity(nextActivity);
+          setAttempt(nextAttempt);
+          setCourse(nextCourse);
+        }
+      })
+      .catch(() => {
+        if (isActive) {
+          setActivity(undefined);
+          setAttempt(undefined);
+          setCourse(undefined);
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setHasLoadedStoredData(true);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
   }, [activityId, courseId]);
 
   if ((!activity || !course) && !hasLoadedStoredData) {
@@ -61,7 +92,7 @@ export function StudentActivityDetail({ activityId, courseId }: StudentActivityD
         activeHref="/student/activities"
         role="student"
         title="Actividad no encontrada"
-        subtitle="No pudimos encontrar una actividad publicada para este curso."
+        subtitle="No se pudo cargar la actividad."
         primaryAction={
           <Link
             href="/student/activities"

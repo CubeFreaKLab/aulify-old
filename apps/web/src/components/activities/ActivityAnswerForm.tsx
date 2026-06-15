@@ -8,7 +8,7 @@ import {
   type ActivityAnswer,
   type ActivityAttempt
 } from "../../lib/mock/activities";
-import { submitActivityAttempt } from "../../lib/repositories/activityRepository";
+import { submitActivityAttemptAsync } from "../../lib/repositories/activityRepository";
 
 type ActivityAnswerFormProps = {
   activity: Activity;
@@ -73,6 +73,8 @@ export function ActivityAnswerForm({ activity, existingAttempt }: ActivityAnswer
   const [attempt, setAttempt] = useState<ActivityAttempt | undefined>(existingAttempt);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [error, setError] = useState("");
+  const [submitError, setSubmitError] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setAttempt(existingAttempt);
@@ -98,18 +100,26 @@ export function ActivityAnswerForm({ activity, existingAttempt }: ActivityAnswer
     return activity.questions.some((question) => !(answers[question.id] ?? "").trim());
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitError("");
 
     if (hasMissingAnswer()) {
       setError("Responde la actividad antes de enviarla.");
       return;
     }
 
-    const nextAttempt = submitActivityAttempt({ activity, answers: buildAnswers() });
-    setAttempt(nextAttempt);
-    setAnswers({});
-    setError("");
+    try {
+      setIsSubmitting(true);
+      const nextAttempt = await submitActivityAttemptAsync({ activity, answers: buildAnswers() });
+      setAttempt(nextAttempt);
+      setAnswers({});
+      setError("");
+    } catch {
+      setSubmitError("No se pudo enviar tus respuestas.");
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   if (attempt) {
@@ -265,13 +275,15 @@ export function ActivityAnswerForm({ activity, existingAttempt }: ActivityAnswer
       ))}
 
       {error ? <span className="text-sm font-semibold text-[#E5484D]">{error}</span> : null}
+      {submitError ? <span className="text-sm font-semibold text-[#E5484D]">{submitError}</span> : null}
 
       <div className="flex justify-end">
         <button
+          disabled={isSubmitting}
           type="submit"
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          Enviar respuestas
+          {isSubmitting ? "Enviando respuestas..." : "Enviar respuestas"}
         </button>
       </div>
     </form>

@@ -11,7 +11,12 @@ import {
   type Activity,
   type ActivityAttempt
 } from "../../lib/mock/activities";
-import { getActivityAttempts, getActivitiesByCourseId, getInitialActivitiesByCourseId, getInitialActivityAttempts } from "../../lib/repositories/activityRepository";
+import {
+  getActivitiesByCourseIdAsync,
+  getActivityAttemptsAsync,
+  getInitialActivitiesByCourseId,
+  getInitialActivityAttempts
+} from "../../lib/repositories/activityRepository";
 import { isFirebaseDataSource } from "../../lib/config/dataSource";
 import { getCourseByIdAsync, getInitialCourseById, type Course } from "../../lib/repositories/courseRepository";
 import { noteStatusLabels, type Note } from "../../lib/mock/notes";
@@ -45,14 +50,18 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
       getCourseByIdAsync(courseId, "teacher"),
       getNotesByCourseIdAsync(courseId),
       getTasksByCourseIdAsync(courseId),
-      getTaskSubmissionsAsync()
+      getTaskSubmissionsAsync(),
+      getActivitiesByCourseIdAsync(courseId),
+      getActivityAttemptsAsync()
     ])
-      .then(([nextCourse, nextNotes, nextTasks, nextSubmissions]) => {
+      .then(([nextCourse, nextNotes, nextTasks, nextSubmissions, nextActivities, nextActivityAttempts]) => {
         if (isActive) {
           setCourse(nextCourse);
           setNotes(nextNotes);
           setTasks(nextTasks);
           setSubmissions(nextSubmissions);
+          setActivities(nextActivities);
+          setActivityAttempts(nextActivityAttempts);
           setCourseError("");
         }
       })
@@ -67,9 +76,6 @@ export function TeacherCourseDetail({ courseId }: TeacherCourseDetailProps) {
           setHasLoadedStoredCourses(true);
         }
       });
-    setActivities(getActivitiesByCourseId(courseId));
-    setActivityAttempts(getActivityAttempts());
-
     return () => {
       isActive = false;
     };

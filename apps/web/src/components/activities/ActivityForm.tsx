@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import type { ActivityOption, ActivityQuestion, ActivityStatus, ActivityType } from "../../lib/mock/activities";
-import { createActivity } from "../../lib/repositories/activityRepository";
+import { createActivityAsync } from "../../lib/repositories/activityRepository";
 
 type ActivityFormProps = {
   courseId: string;
@@ -55,6 +55,8 @@ export function ActivityForm({ courseId }: ActivityFormProps) {
     question: "",
     title: ""
   });
+  const [isSaving, setIsSaving] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   function validateForm() {
     const options = buildOptions(optionTexts);
@@ -105,8 +107,9 @@ export function ActivityForm({ courseId }: ActivityFormProps) {
     return baseQuestion;
   }
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    setSubmitError("");
 
     const nextErrors = validateForm();
     setErrors(nextErrors);
@@ -115,16 +118,23 @@ export function ActivityForm({ courseId }: ActivityFormProps) {
       return;
     }
 
-    const activity = createActivity({
-      courseId,
-      description,
-      questions: [createQuestion()],
-      status,
-      title,
-      type
-    });
+    try {
+      setIsSaving(true);
+      const activity = await createActivityAsync({
+        courseId,
+        description,
+        questions: [createQuestion()],
+        status,
+        title,
+        type
+      });
 
-    router.push(`/teacher/courses/${courseId}/activities/${activity.id}`);
+      router.push(`/teacher/courses/${courseId}/activities/${activity.id}`);
+    } catch {
+      setSubmitError("No se pudo guardar la actividad.");
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   return (
@@ -328,6 +338,7 @@ export function ActivityForm({ courseId }: ActivityFormProps) {
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+        {submitError ? <p className="m-0 self-center text-sm font-semibold text-[#E5484D]">{submitError}</p> : null}
         <Link
           href={`/teacher/courses/${courseId}`}
           className="inline-flex min-h-12 items-center justify-center rounded-full border border-neutral-black bg-neutral-white px-6 text-base font-bold text-neutral-black transition-colors duration-base hover:border-brand-green hover:text-brand-green focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
@@ -335,10 +346,11 @@ export function ActivityForm({ courseId }: ActivityFormProps) {
           Cancelar
         </Link>
         <button
+          disabled={isSaving}
           type="submit"
-          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2"
+          className="inline-flex min-h-12 items-center justify-center rounded-full bg-brand-green px-6 text-base font-bold text-neutral-white transition duration-base hover:brightness-95 focus:outline-none focus:ring-2 focus:ring-brand-green focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-70"
         >
-          Guardar actividad
+          {isSaving ? "Guardando actividad..." : "Guardar actividad"}
         </button>
       </div>
     </form>

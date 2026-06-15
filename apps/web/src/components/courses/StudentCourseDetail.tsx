@@ -12,7 +12,12 @@ import {
   type Activity,
   type ActivityAttempt
 } from "../../lib/mock/activities";
-import { getActivityAttempts, getActivitiesByCourseId, getInitialActivitiesByCourseId, getInitialActivityAttempts } from "../../lib/repositories/activityRepository";
+import {
+  getActivitiesByCourseIdAsync,
+  getActivityAttemptsAsync,
+  getInitialActivitiesByCourseId,
+  getInitialActivityAttempts
+} from "../../lib/repositories/activityRepository";
 import type { Note } from "../../lib/mock/notes";
 import {
   formatTaskDate,
@@ -84,14 +89,18 @@ export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
       getCourseByIdAsync(courseId, "student"),
       getNotesByCourseIdAsync(courseId, { publishedOnly: true }),
       getTasksByCourseIdAsync(courseId, { publishedOnly: true }),
-      getTaskSubmissionsAsync()
+      getTaskSubmissionsAsync(),
+      getActivitiesByCourseIdAsync(courseId, { publishedOnly: true }),
+      getActivityAttemptsAsync()
     ])
-      .then(([nextCourse, nextNotes, nextTasks, nextSubmissions]) => {
+      .then(([nextCourse, nextNotes, nextTasks, nextSubmissions, nextActivities, nextActivityAttempts]) => {
         if (isActive) {
           setCourse(nextCourse);
           setNotes(nextNotes);
           setTasks(nextTasks);
           setSubmissions(nextSubmissions);
+          setActivities(nextActivities);
+          setActivityAttempts(nextActivityAttempts);
           setCourseError("");
         }
       })
@@ -106,9 +115,6 @@ export function StudentCourseDetail({ courseId }: StudentCourseDetailProps) {
           setHasLoadedStoredData(true);
         }
       });
-    setActivities(getActivitiesByCourseId(courseId, { publishedOnly: true }));
-    setActivityAttempts(getActivityAttempts());
-
     return () => {
       isActive = false;
     };

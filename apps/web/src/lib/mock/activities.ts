@@ -18,6 +18,7 @@ export type ActivityQuestion = {
 export type Activity = {
   courseId: string;
   createdAt: string;
+  createdBy?: string;
   description: string;
   id: string;
   questions: ActivityQuestion[];
@@ -37,10 +38,13 @@ export type ActivityAnswer = {
 export type ActivityAttempt = {
   activityId: string;
   answers: ActivityAnswer[];
+  courseId?: string;
   id: string;
   score?: number;
+  studentId?: string;
   studentName: string;
   submittedAt: string;
+  updatedAt?: string;
 };
 
 export const currentStudentActivityIdentity = {
